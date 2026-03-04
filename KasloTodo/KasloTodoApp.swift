@@ -21,12 +21,22 @@ struct RootView: View {
         }
     }
 }
-/// Main content view - just shows the tasks list
+/// Main tab view with Tasks and Weather
 struct MainTabView: View {
     @ObservedObject var store: TodoStore
     
     var body: some View {
-        ContentView(store: store)
+        TabView {
+            ContentView(store: store)
+                .tabItem {
+                    Label("Tasks", systemImage: "checklist")
+                }
+            
+            WeatherView(store: store)
+                .tabItem {
+                    Label("Weather", systemImage: "cloud.sun.fill")
+                }
+        }
     }
 }
 

@@ -30,9 +30,25 @@ class TodoStore: ObservableObject {
         }
     }
     
-    // Initialize configuration state
+    // Initialize configuration state and load cached data
     init() {
         updateConfigurationState()
+        loadCachedItems()
+    }
+    
+    // MARK: - Caching
+    
+    private func loadCachedItems() {
+        if let data = UserDefaults.standard.data(forKey: "cachedTodoItems"),
+           let cached = try? JSONDecoder().decode([TodoItem].self, from: data) {
+            items = cached
+        }
+    }
+    
+    private func cacheItems() {
+        if let data = try? JSONEncoder().encode(items) {
+            UserDefaults.standard.set(data, forKey: "cachedTodoItems")
+        }
     }
     
     private func updateConfigurationState() {
@@ -60,6 +76,7 @@ class TodoStore: ObservableObject {
         errorMessage = nil
         items = try await APIClient.fetchTodos(serverURL: serverURL, apiKey: apiKey)
         lastSynced = Date()
+        cacheItems()
     }
 
     // MARK: Write — one item at a time (server is source of truth)
