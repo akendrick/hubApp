@@ -14,6 +14,7 @@ struct ContentView: View {
     
     enum SortOption: String, CaseIterable {
         case priority = "Priority"
+        case dueDate = "Due Date"
         case tag = "Tag"
     }
 
@@ -26,13 +27,13 @@ struct ContentView: View {
                     todoList
                 }
             }
-            .navigationTitle("Kaslo To Do")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .topBarLeading) {
                     HStack(spacing: 12) {
                         Button { showSettings = true } label: {
                             Image(systemName: "gear")
+                                .imageScale(.medium)
                         }
                         
                         // Sort menu
@@ -43,14 +44,24 @@ struct ContentView: View {
                                 }
                             }
                         } label: {
-                            Label("Sort", systemImage: "arrow.up.arrow.down")
+                            Image(systemName: "arrow.up.arrow.down")
+                                .imageScale(.medium)
                         }
                     }
                 }
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    if store.isLoading { ProgressView().scaleEffect(0.75) }
-                    Button { showAdd = true } label: {
-                        Image(systemName: "plus")
+                
+                ToolbarItem(placement: .principal) {
+                    Text("Kaslo To Do")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                }
+                
+                ToolbarItem(placement: .topBarTrailing) {
+                    HStack(spacing: 8) {
+                        if store.isLoading { ProgressView().scaleEffect(0.75) }
+                        Button { showAdd = true } label: {
+                            Image(systemName: "plus")
+                        }
                     }
                 }
             }
@@ -86,7 +97,7 @@ struct ContentView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
                     .padding(.bottom, 4)
-                    .background(Color(.systemGroupedBackground))
+                    .background(Color(uiColor: .systemGroupedBackground))
             }
             
             List {
@@ -216,7 +227,7 @@ struct ContentView: View {
                         .font(.subheadline.weight(.semibold))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
-                        .background(selectedTag == nil ? Color.black : Color(.systemGray5))
+                        .background(selectedTag == nil ? Color.black : Color(uiColor: .systemGray5))
                         .foregroundStyle(selectedTag == nil ? .white : .primary)
                         .clipShape(Capsule())
                 }
@@ -232,7 +243,7 @@ struct ContentView: View {
                             .font(.subheadline.weight(.semibold))
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
-                            .background(selectedTag == tag ? Color.black : Color(.systemGray5))
+                            .background(selectedTag == tag ? Color.black : Color(uiColor: .systemGray5))
                             .foregroundStyle(selectedTag == tag ? .white : .primary)
                             .clipShape(Capsule())
                     }
@@ -273,6 +284,8 @@ struct ContentView: View {
         switch sortOption {
         case .priority:
             return store.sortedByPriority(items)
+        case .dueDate:
+            return store.sortedByDueDate(items)
         case .tag:
             return store.sortedByTag(items)
         }

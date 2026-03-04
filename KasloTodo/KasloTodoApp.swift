@@ -15,9 +15,18 @@ struct RootView: View {
 
     var body: some View {
         if store.isConfigured {
-            ContentView(store: store)
+            MainTabView(store: store)
         } else {
             OnboardingView(store: store)
         }
     }
 }
+/// Main content view - just shows the tasks list
+struct MainTabView: View {
+    @ObservedObject var store: TodoStore
+    
+    var body: some View {
+        ContentView(store: store)
+    }
+}
+

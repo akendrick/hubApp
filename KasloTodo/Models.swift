@@ -57,6 +57,14 @@ struct TodoItem: Identifiable, Codable, Equatable {
         let fmt = DateFormatter(); fmt.dateStyle = .medium; fmt.timeStyle = .none
         return fmt.string(from: date)
     }
+    
+    /// Parsed due date as Date for sorting
+    var dueDate: Date? {
+        guard let due else { return nil }
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withFullDate]
+        return iso.date(from: due)
+    }
 
     var isOverdue: Bool {
         guard !done, let due else { return false }

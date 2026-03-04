@@ -167,6 +167,26 @@ class TodoStore: ObservableObject {
                 : $0.text.localizedCaseInsensitiveCompare($1.text) == .orderedAscending
         }
     }
+    
+    /// Sort items by due date (items with due dates first, then by date)
+    func sortedByDueDate(_ items: [TodoItem]) -> [TodoItem] {
+        items.sorted { item1, item2 in
+            let date1 = item1.dueDate
+            let date2 = item2.dueDate
+            
+            // Items with no due date go to the end
+            if date1 == nil && date2 != nil { return false }
+            if date1 != nil && date2 == nil { return true }
+            
+            // Both have due dates, sort by date
+            if let d1 = date1, let d2 = date2 {
+                if d1 != d2 { return d1 < d2 }
+            }
+            
+            // Same date or both nil, sort by text
+            return item1.text.localizedCaseInsensitiveCompare(item2.text) == .orderedAscending
+        }
+    }
 
     // MARK: Error handling
 
