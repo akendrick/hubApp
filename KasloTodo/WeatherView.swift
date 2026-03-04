@@ -6,6 +6,17 @@ struct WeatherView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     
+    // MARK: - Initialization
+    
+    init(store: TodoStore) {
+        self.store = store
+        // Load cached weather on init
+        if let data = UserDefaults.standard.data(forKey: "cachedWeather"),
+           let cached = try? JSONDecoder().decode(WeatherResponse.self, from: data) {
+            _weather = State(initialValue: cached)
+        }
+    }
+    
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -356,6 +367,10 @@ struct WeatherView: View {
         
         do {
             weather = try await fetchWeather(serverURL: store.serverURL, apiKey: store.apiKey)
+            // Cache the weather data
+            if let data = try? JSONEncoder().encode(weather) {
+                UserDefaults.standard.set(data, forKey: "cachedWeather")
+            }
         } catch {
             errorMessage = error.localizedDescription
         }

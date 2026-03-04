@@ -66,6 +66,7 @@ class TodoStore: ObservableObject {
         apiKey    = key
         items     = fetched
         lastSynced = Date()
+        cacheItems()
     }
 
     // MARK: Read
@@ -86,6 +87,7 @@ class TodoStore: ObservableObject {
         let created = try await APIClient.addTodo(serverURL: serverURL, apiKey: apiKey, draft: draft)
         items.insert(created, at: 0)
         lastSynced = Date()
+        cacheItems()
     }
 
     /// Update mutable fields of an existing item via PATCH.
@@ -95,6 +97,7 @@ class TodoStore: ObservableObject {
             items[idx] = updated
         }
         lastSynced = Date()
+        cacheItems()
     }
 
     /// Toggle done state.
@@ -107,6 +110,7 @@ class TodoStore: ObservableObject {
         try await APIClient.deleteTodo(serverURL: serverURL, apiKey: apiKey, id: id)
         items.removeAll { $0.id == id }
         lastSynced = Date()
+        cacheItems()
     }
 
     func delete(at offsets: IndexSet, in source: [TodoItem]) async throws {

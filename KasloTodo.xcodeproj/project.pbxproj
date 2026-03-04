@@ -16,11 +16,19 @@
 		A007 /* OnboardingSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F007 /* OnboardingSettingsView.swift */; };
 		EEEF54642F58B2D30072AE88 /* WeatherModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEF54632F58B2D30072AE88 /* WeatherModels.swift */; };
 		EEEF54662F58B3020072AE88 /* WeatherView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEF54652F58B3020072AE88 /* WeatherView.swift */; };
+		EEEF54682F58B4F60072AE88 /* WeatherSplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEF54672F58B4F50072AE88 /* WeatherSplashView.swift */; };
+		EEEF546A2F58B6AF0072AE88 /* WeatherSplashView 2.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEF54692F58B6AF0072AE88 /* WeatherSplashView 2.swift */; };
+		EEEF546C2F58B7680072AE88 /* WeatherSplashView 3.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEF546B2F58B7680072AE88 /* WeatherSplashView 3.swift */; };
+		EEEF546E2F58B9320072AE88 /* WeatherSplashView 2.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEF546D2F58B9320072AE88 /* WeatherSplashView 2.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		EEEF54632F58B2D30072AE88 /* WeatherModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherModels.swift; sourceTree = "<group>"; };
 		EEEF54652F58B3020072AE88 /* WeatherView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherView.swift; sourceTree = "<group>"; };
+		EEEF54672F58B4F50072AE88 /* WeatherSplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherSplashView.swift; sourceTree = "<group>"; };
+		EEEF54692F58B6AF0072AE88 /* WeatherSplashView 2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeatherSplashView 2.swift"; sourceTree = "<group>"; };
+		EEEF546B2F58B7680072AE88 /* WeatherSplashView 3.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeatherSplashView 3.swift"; sourceTree = "<group>"; };
+		EEEF546D2F58B9320072AE88 /* WeatherSplashView 2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WeatherSplashView 2.swift"; sourceTree = "<group>"; };
 		F001 /* KasloTodoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KasloTodoApp.swift; sourceTree = "<group>"; };
 		F002 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		F003 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
@@ -60,6 +68,10 @@
 				F007 /* OnboardingSettingsView.swift */,
 				EEEF54632F58B2D30072AE88 /* WeatherModels.swift */,
 				EEEF54652F58B3020072AE88 /* WeatherView.swift */,
+				EEEF54672F58B4F50072AE88 /* WeatherSplashView.swift */,
+				EEEF54692F58B6AF0072AE88 /* WeatherSplashView 2.swift */,
+				EEEF546B2F58B7680072AE88 /* WeatherSplashView 3.swift */,
+				EEEF546D2F58B9320072AE88 /* WeatherSplashView 2.swift */,
 			);
 			path = KasloTodo;
 			sourceTree = "<group>";
@@ -123,7 +135,11 @@
 				A001 /* KasloTodoApp.swift in Sources */,
 				A002 /* Models.swift in Sources */,
 				EEEF54642F58B2D30072AE88 /* WeatherModels.swift in Sources */,
+				EEEF546E2F58B9320072AE88 /* WeatherSplashView 2.swift in Sources */,
+				EEEF546A2F58B6AF0072AE88 /* WeatherSplashView 2.swift in Sources */,
 				A003 /* APIClient.swift in Sources */,
+				EEEF546C2F58B7680072AE88 /* WeatherSplashView 3.swift in Sources */,
+				EEEF54682F58B4F60072AE88 /* WeatherSplashView.swift in Sources */,
 				A004 /* TodoStore.swift in Sources */,
 				A005 /* ContentView.swift in Sources */,
 				EEEF54662F58B3020072AE88 /* WeatherView.swift in Sources */,
@@ -227,6 +243,8 @@
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = ABKCFJF5QD;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = ToDo;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -260,6 +278,8 @@
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = ABKCFJF5QD;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = ToDo;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
