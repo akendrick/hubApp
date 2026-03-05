@@ -19,13 +19,13 @@ struct DarkroomView: View {
     @State private var selectedTab: DRTab = .chemistry
 
     enum DRTab: String, CaseIterable {
-        case chemistry    = "Chemistry"
-        case paper        = "Paper"
+        case photos       = "Photos"
+        case exposures    = "Exposures"
+        case negatives    = "Negatives"
         case supportPaper = "Support Paper"
         case carbonTissue = "Carbon Tissue"
-        case negatives    = "Negatives"
-        case exposures    = "Exposures"
-        case photos       = "Photos"
+        case paper        = "Paper"
+        case chemistry    = "Chemistry"
     }
 
     var body: some View {
@@ -35,13 +35,13 @@ struct DarkroomView: View {
                 Divider()
                 Group {
                     switch selectedTab {
-                    case .chemistry:    DRChemistryTab(store: store)
-                    case .paper:        DRPaperTab(store: store)
+                    case .photos:       DRPhotosTab(store: store)
+                    case .exposures:    DRExposuresTab(store: store)
+                    case .negatives:    DRNegativesTab(store: store)
                     case .supportPaper: DRSupportPaperTab(store: store)
                     case .carbonTissue: DRCarbonTissueTab(store: store)
-                    case .negatives:    DRNegativesTab(store: store)
-                    case .exposures:    DRExposuresTab(store: store)
-                    case .photos:       DRPhotosTab(store: store)
+                    case .paper:        DRPaperTab(store: store)
+                    case .chemistry:    DRChemistryTab(store: store)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

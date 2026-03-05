@@ -14,12 +14,22 @@
 		A005 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F005 /* ContentView.swift */; };
 		A006 /* EditItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F006 /* EditItemView.swift */; };
 		A007 /* OnboardingSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F007 /* OnboardingSettingsView.swift */; };
+		EED5B60E2F592452004C98EA /* DarkroomModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = EED5B60A2F592452004C98EA /* DarkroomModels.swift */; };
+		EED5B60F2F592452004C98EA /* DarkroomStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EED5B60B2F592452004C98EA /* DarkroomStore.swift */; };
+		EED5B6102F592452004C98EA /* DarkroomAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = EED5B6092F592452004C98EA /* DarkroomAPIClient.swift */; };
+		EED5B6112F592452004C98EA /* DarkroomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EED5B60C2F592452004C98EA /* DarkroomView.swift */; };
+		EED5B6122F592452004C98EA /* KasloTodoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = EED5B60D2F592452004C98EA /* KasloTodoApp.swift */; };
 		EEEF54642F58B2D30072AE88 /* WeatherModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEF54632F58B2D30072AE88 /* WeatherModels.swift */; };
 		EEEF54662F58B3020072AE88 /* WeatherView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEF54652F58B3020072AE88 /* WeatherView.swift */; };
 		EEEF54682F58B4F60072AE88 /* WeatherSplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEF54672F58B4F50072AE88 /* WeatherSplashView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		EED5B6092F592452004C98EA /* DarkroomAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DarkroomAPIClient.swift; sourceTree = "<group>"; };
+		EED5B60A2F592452004C98EA /* DarkroomModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DarkroomModels.swift; sourceTree = "<group>"; };
+		EED5B60B2F592452004C98EA /* DarkroomStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DarkroomStore.swift; sourceTree = "<group>"; };
+		EED5B60C2F592452004C98EA /* DarkroomView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DarkroomView.swift; sourceTree = "<group>"; };
+		EED5B60D2F592452004C98EA /* KasloTodoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KasloTodoApp.swift; sourceTree = "<group>"; };
 		EEEF54632F58B2D30072AE88 /* WeatherModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherModels.swift; sourceTree = "<group>"; };
 		EEEF54652F58B3020072AE88 /* WeatherView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherView.swift; sourceTree = "<group>"; };
 		EEEF54672F58B4F50072AE88 /* WeatherSplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherSplashView.swift; sourceTree = "<group>"; };
@@ -53,6 +63,11 @@
 		SRCGRP /* KasloTodo */ = {
 			isa = PBXGroup;
 			children = (
+				EED5B6092F592452004C98EA /* DarkroomAPIClient.swift */,
+				EED5B60A2F592452004C98EA /* DarkroomModels.swift */,
+				EED5B60B2F592452004C98EA /* DarkroomStore.swift */,
+				EED5B60C2F592452004C98EA /* DarkroomView.swift */,
+				EED5B60D2F592452004C98EA /* KasloTodoApp.swift */,
 				F001 /* KasloTodoApp.swift */,
 				F002 /* Models.swift */,
 				F003 /* APIClient.swift */,
@@ -129,6 +144,11 @@
 				A003 /* APIClient.swift in Sources */,
 				EEEF54682F58B4F60072AE88 /* WeatherSplashView.swift in Sources */,
 				A004 /* TodoStore.swift in Sources */,
+				EED5B60E2F592452004C98EA /* DarkroomModels.swift in Sources */,
+				EED5B60F2F592452004C98EA /* DarkroomStore.swift in Sources */,
+				EED5B6102F592452004C98EA /* DarkroomAPIClient.swift in Sources */,
+				EED5B6112F592452004C98EA /* DarkroomView.swift in Sources */,
+				EED5B6122F592452004C98EA /* KasloTodoApp.swift in Sources */,
 				A005 /* ContentView.swift in Sources */,
 				EEEF54662F58B3020072AE88 /* WeatherView.swift in Sources */,
 				A006 /* EditItemView.swift in Sources */,

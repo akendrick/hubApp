@@ -116,6 +116,7 @@ struct DRExposure: Identifiable, Codable {
     var negativeId: Int?
     var negType: String?
     var negDate: String?
+    var times: [DRExposureTime]
     var paperSoakTime: Int?
     var paperSoakTemp: Double?
     var hotDevelopTime: Int?
@@ -123,7 +124,6 @@ struct DRExposure: Identifiable, Codable {
     var coolDevelopTime: Int?
     var coolDevelopTemp: Double?
     var notes: String?
-    var times: [DRExposureTime]
 }
 
 // MARK: - Photo + Layers
