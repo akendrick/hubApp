@@ -16,14 +16,12 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
-            // Main app content
             if store.isConfigured {
                 MainTabView(store: store)
             } else {
                 OnboardingView(store: store)
             }
-            
-            // Weather splash overlay
+
             if showWeatherSplash && store.isConfigured {
                 WeatherSplashView(store: store, isPresented: $showWeatherSplash)
                     .transition(.opacity)
@@ -32,22 +30,35 @@ struct RootView: View {
         }
     }
 }
-/// Main tab view with Tasks and Weather
+
+/// Main tab view — Tasks, Weather, Darkroom
 struct MainTabView: View {
     @ObservedObject var store: TodoStore
-    
+    @StateObject private var darkroomStore: DarkroomStore
+
+    init(store: TodoStore) {
+        self.store = store
+        _darkroomStore = StateObject(
+            wrappedValue: DarkroomStore(serverURL: store.serverURL, apiKey: store.apiKey)
+        )
+    }
+
     var body: some View {
         TabView {
             ContentView(store: store)
                 .tabItem {
                     Label("Tasks", systemImage: "checklist")
                 }
-            
+
             WeatherView(store: store)
                 .tabItem {
                     Label("Weather", systemImage: "cloud.sun.fill")
                 }
+
+            DarkroomView(store: darkroomStore)
+                .tabItem {
+                    Label("Darkroom", systemImage: "camera.aperture")
+                }
         }
     }
 }
-
