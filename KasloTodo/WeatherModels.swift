@@ -46,6 +46,46 @@ struct WeatherObservation: Codable {
         case indoorTemp = "indoor_temp"
         case indoorHumidity = "indoor_humidity"
     }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        temp = c.decodeLossyDouble(forKey: .temp)
+        feelsLike = c.decodeLossyDouble(forKey: .feelsLike)
+        dewPoint = c.decodeLossyDouble(forKey: .dewPoint)
+        humidity = c.decodeLossyInt(forKey: .humidity)
+        pressureHpa = c.decodeLossyDouble(forKey: .pressureHpa)
+        windSpeedKmh = c.decodeLossyDouble(forKey: .windSpeedKmh)
+        windDirection = c.decodeLossyInt(forKey: .windDirection)
+        windGustKmh = c.decodeLossyDouble(forKey: .windGustKmh)
+        precipRateMmh = c.decodeLossyDouble(forKey: .precipRateMmh)
+        precip24hMm = c.decodeLossyDouble(forKey: .precip24hMm)
+        precip7dMm = c.decodeLossyDouble(forKey: .precip7dMm)
+        uvIndex = c.decodeLossyDouble(forKey: .uvIndex)
+        solarWm2 = c.decodeLossyDouble(forKey: .solarWm2)
+        indoorTemp = c.decodeLossyDouble(forKey: .indoorTemp)
+        indoorHumidity = c.decodeLossyInt(forKey: .indoorHumidity)
+    }
+}
+
+private extension KeyedDecodingContainer where K == WeatherObservation.CodingKeys {
+    func decodeLossyDouble(forKey key: K) -> Double? {
+        if let d = try? decodeIfPresent(Double.self, forKey: key) { return d }
+        if let i = try? decodeIfPresent(Int.self, forKey: key) { return Double(i) }
+        if let s = try? decodeIfPresent(String.self, forKey: key) {
+            return Double(s.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+        return nil
+    }
+
+    func decodeLossyInt(forKey key: K) -> Int? {
+        if let i = try? decodeIfPresent(Int.self, forKey: key) { return i }
+        if let d = try? decodeIfPresent(Double.self, forKey: key) { return Int(d.rounded()) }
+        if let s = try? decodeIfPresent(String.self, forKey: key),
+           let d = Double(s.trimmingCharacters(in: .whitespacesAndNewlines)) {
+            return Int(d.rounded())
+        }
+        return nil
+    }
 }
 
 // MARK: - Daily Forecast

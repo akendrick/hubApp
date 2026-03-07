@@ -78,40 +78,55 @@ struct WeatherSplashView: View {
             let center = CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2)
             
             ZStack {
-                // Outer date ring (days of month)
-                dateRing(center: center, radius: size * 0.46)
-                
                 // Outer circle - day/night gradient background
                 Circle()
-                    .fill(
-                        AngularGradient(
-                            gradient: Gradient(colors: dayNightGradient),
-                            center: .center,
-                            startAngle: .degrees(0),
-                            endAngle: .degrees(360)
-                        )
-                    )
+                    .fill(Color(red: 0.05, green: 0.08, blue: 0.2))
                     .frame(width: size * 0.85, height: size * 0.85)
-                
-                // 24-hour markers
-                ForEach(0..<24) { hour in
-                    hourMarker(hour: hour, center: center, radius: size * 0.38)
+
+                // Astronomical twilight (outermost twilight range)
+                TimeSectorShape(
+                    startHour: sunriseHour - twilightTotalHours,
+                    endHour: sunsetHour + twilightTotalHours
+                )
+                .fill(Color(red: 0.10, green: 0.20, blue: 0.42))
+                .frame(width: size * 0.85, height: size * 0.85)
+
+                // Nautical twilight
+                TimeSectorShape(
+                    startHour: sunriseHour - (civilTwilightHours + nauticalTwilightHours),
+                    endHour: sunsetHour + (civilTwilightHours + nauticalTwilightHours)
+                )
+                .fill(Color(red: 0.16, green: 0.30, blue: 0.55))
+                .frame(width: size * 0.85, height: size * 0.85)
+
+                // Civil twilight (closest to daylight)
+                TimeSectorShape(
+                    startHour: sunriseHour - civilTwilightHours,
+                    endHour: sunsetHour + civilTwilightHours
+                )
+                .fill(Color(red: 0.24, green: 0.44, blue: 0.72))
+                .frame(width: size * 0.85, height: size * 0.85)
+
+                DaylightSectorShape(sunriseHour: sunriseHour, sunsetHour: sunsetHour)
+                    .fill(Color(red: 1.0, green: 0.95, blue: 0.3))
+                    .frame(width: size * 0.85, height: size * 0.85)
+
+                // Current date (inside dial, daylight half)
+                Text(todayMonthLabel())
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .position(x: center.x, y: center.y - (size * 0.12))
+
+                // Sun position indicator (behind hour labels)
+                sunIndicator(hour: currentHourInKaslo, center: center, radius: size * 0.30)
+
+                // Hour labels (all 24 hours)
+                ForEach(0..<24, id: \.self) { hour in
+                    hourLabel(hour: hour, center: center, radius: size * 0.385)
                 }
-                
-                // Hour labels (every 2 hours)
-                ForEach(Array(stride(from: 0, to: 24, by: 2)), id: \.self) { hour in
-                    hourLabel(hour: hour, center: center, radius: size * 0.32)
-                }
-                
-                // Sun position indicator
-                if let sunAngle = weather?.sun.nowAngle {
-                    sunIndicator(angle: sunAngle, center: center, radius: size * 0.35)
-                }
-                
+
                 // Moon position indicator (outside the dial)
-                if let moonPhase = weather?.moon.phase {
-                    moonIndicator(phase: moonPhase, center: center, radius: size * 0.35)
-                }
+                moonIndicator(emoji: weather?.moon.emoji ?? "🌑", center: center, radius: size * 0.35)
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
         }
@@ -121,112 +136,45 @@ struct WeatherSplashView: View {
     
     // MARK: - Dial Components
     
-    private var dayNightGradient: [Color] {
-        // Simple gradient: Top half = yellow (day), bottom half = dark blue (night)
-        // This is FIXED and never rotates
-        return [
-            // Top hemisphere - Day
-            Color(red: 1.0, green: 0.95, blue: 0.3),   // Yellow (top)
-            Color(red: 1.0, green: 0.95, blue: 0.3),   // Yellow
-            Color(red: 1.0, green: 0.95, blue: 0.3),   // Yellow
-            Color(red: 1.0, green: 0.95, blue: 0.3),   // Yellow
-            
-            // Horizon transition (left and right sides at 6am/6pm)
-            Color(red: 0.5, green: 0.6, blue: 0.8),    // Transition
-            
-            // Bottom hemisphere - Night
-            Color(red: 0.05, green: 0.08, blue: 0.2),  // Dark blue (bottom)
-            Color(red: 0.05, green: 0.08, blue: 0.2),  // Dark blue
-            Color(red: 0.05, green: 0.08, blue: 0.2),  // Dark blue
-            Color(red: 0.05, green: 0.08, blue: 0.2),  // Dark blue
-            
-            // Other side transition
-            Color(red: 0.5, green: 0.6, blue: 0.8),    // Transition
-            
-            // Back to top
-            Color(red: 1.0, green: 0.95, blue: 0.3),   // Yellow
-        ]
-    }
-    
-    // MARK: - Date Ring
-    
-    private func dateRing(center: CGPoint, radius: CGFloat) -> some View {
-        let calendar = Calendar.current
-        let today = calendar.component(.day, from: currentTime)
-        let daysInMonth = calendar.range(of: .day, in: .month, for: currentTime)?.count ?? 31
-        
-        // Calculate rotation offset to put current day at 12 o'clock (top)
-        let degreesPerDay = 360.0 / Double(daysInMonth)
-        let rotationOffset = -Double(today - 1) * degreesPerDay - 180.0 // Adjusted for new orientation
-        
-        return ForEach(1...daysInMonth, id: \.self) { day in
-            let angle = Double(day - 1) * degreesPerDay + rotationOffset
-            let isToday = day == today
-            
-            Text("\(day)")
-                .font(.system(size: isToday ? 14 : 10, weight: isToday ? .bold : .regular, design: .rounded))
-                .foregroundStyle(isToday ? Color.white : Color.white.opacity(0.5))
-                .position(
-                    x: center.x + radius * CGFloat(cos(angle * .pi / 180)),
-                    y: center.y + radius * CGFloat(sin(angle * .pi / 180))
-                )
-        }
-    }
-    
-    private func hourMarker(hour: Int, center: CGPoint, radius: CGFloat) -> some View {
-        // Adjust angle: hour 12 at top (0°), hour 0/24 at bottom (180°)
-        let angle = Double(hour) * 15.0 - 180.0 // 360/24 = 15 degrees per hour, offset by 180
-        let markerLength: CGFloat = hour % 6 == 0 ? 20 : (hour % 3 == 0 ? 15 : 10)
-        let markerWidth: CGFloat = hour % 6 == 0 ? 2 : 1
-        
-        return Rectangle()
-            .fill(Color.white.opacity(hour % 6 == 0 ? 0.8 : 0.5))
-            .frame(width: markerWidth, height: markerLength)
-            .position(
-                x: center.x + radius * CGFloat(cos(angle * .pi / 180)),
-                y: center.y + radius * CGFloat(sin(angle * .pi / 180))
-            )
-            .rotationEffect(.degrees(angle + 90), anchor: .center)
-    }
-    
     private func hourLabel(hour: Int, center: CGPoint, radius: CGFloat) -> some View {
-        // Adjust angle: hour 12 at top (0°), hour 0/24 at bottom (180°)
-        let angle = Double(hour) * 15.0 - 180.0
+        let angle = dialAngleDegrees(forHour: Double(hour))
         let displayHour = hour == 0 ? 24 : hour
+        let daylight = isDaylightHour(Double(hour), sunrise: sunriseHour, sunset: sunsetHour)
         
         return Text("\(displayHour)")
-            .font(.system(size: 11, weight: .medium, design: .rounded))
-            .foregroundStyle(.white.opacity(0.9))
+            .font(.system(size: 13, weight: .medium, design: .rounded))
+            .foregroundStyle(daylight ? Color(red: 0.05, green: 0.15, blue: 0.35) : .white)
             .position(
                 x: center.x + radius * CGFloat(cos(angle * .pi / 180)),
                 y: center.y + radius * CGFloat(sin(angle * .pi / 180))
             )
     }
     
-    private func sunIndicator(angle: Double, center: CGPoint, radius: CGFloat) -> some View {
-        // Convert sun angle (0-360, midnight=0, noon=180) to dial position
-        // On our dial: noon=0° (top), midnight=180° (bottom)
-        // So we need to subtract 180 from the sun angle
-        let adjustedAngle = angle - 180.0
+    private func sunIndicator(hour: Double, center: CGPoint, radius: CGFloat) -> some View {
+        let adjustedAngle = dialAngleDegrees(forHour: hour)
         
         return ZStack {
             // Sun glow
             Circle()
                 .fill(
                     RadialGradient(
-                        colors: [Color.yellow.opacity(0.6), Color.yellow.opacity(0)],
+                        colors: [Color.white.opacity(0.75), Color.white.opacity(0)],
                         center: .center,
                         startRadius: 0,
-                        endRadius: 25
+                        endRadius: 30
                     )
                 )
-                .frame(width: 50, height: 50)
+                .frame(width: 56, height: 56)
             
             // Sun
             Circle()
-                .fill(Color.yellow)
+                .fill(Color.white)
                 .frame(width: 20, height: 20)
-                .shadow(color: .yellow.opacity(0.8), radius: 10)
+                .overlay(
+                    Circle()
+                        .stroke(Color.orange.opacity(0.7), lineWidth: 1.5)
+                )
+                .shadow(color: .white.opacity(0.95), radius: 12)
         }
         .position(
             x: center.x + radius * CGFloat(cos(adjustedAngle * .pi / 180)),
@@ -236,14 +184,7 @@ struct WeatherSplashView: View {
     
     // MARK: - Moon Indicator
     
-    private func moonIndicator(phase: Double, center: CGPoint, radius: CGFloat) -> some View {
-        // Moon is stationary at the bottom center (midnight position)
-        // Position: 180° (bottom of dial)
-        let moonAngle = 0.0 // 0° = bottom in our coordinate system (after -180 adjustment)
-        
-        // Get moon emoji
-        let moonEmoji = weather?.moon.emoji ?? "🌑"
-        
+    private func moonIndicator(emoji: String, center: CGPoint, radius: CGFloat) -> some View {
         return ZStack {
             // Moon glow (subtle)
             Circle()
@@ -258,13 +199,136 @@ struct WeatherSplashView: View {
                 .frame(width: 40, height: 40)
             
             // Moon emoji
-            Text(moonEmoji)
-                .font(.system(size: 30))
+            Text(emoji)
+                .font(.system(size: 60))
         }
         .position(
-            x: center.x + 0, // No horizontal offset - centered
-            y: center.y + radius // At the bottom
+            x: center.x,
+            y: center.y + (radius * 0.5)
         )
+    }
+
+    private var sunriseHour: Double {
+        if let hour = hourInKaslo(from: weather?.sun.sunrise) {
+            return hour
+        }
+        if let daylightMinutes = weather?.sun.daylightMinutes {
+            let halfDay = Double(daylightMinutes) / 120.0
+            return 12.0 - halfDay
+        }
+        return 6.0
+    }
+
+    private var sunsetHour: Double {
+        if let hour = hourInKaslo(from: weather?.sun.sunset) {
+            return hour
+        }
+        if let daylightMinutes = weather?.sun.daylightMinutes {
+            let halfDay = Double(daylightMinutes) / 120.0
+            return 12.0 + halfDay
+        }
+        return 18.0
+    }
+
+    private var currentHourInKaslo: Double {
+        let calendar = Calendar(identifier: .gregorian)
+        let timeZone = TimeZone(identifier: "America/Vancouver") ?? .current
+        let components = calendar.dateComponents(in: timeZone, from: currentTime)
+        let hour = Double(components.hour ?? 0)
+        let minute = Double(components.minute ?? 0)
+        let second = Double(components.second ?? 0)
+        return hour + (minute / 60.0) + (second / 3600.0)
+    }
+
+    private func hourInKaslo(from isoString: String?) -> Double? {
+        guard let isoString else { return nil }
+        let value = isoString.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if let parsed = parseISODate(value) {
+            return dateToKasloHour(parsed)
+        }
+        if let parsed = parseServerDateTime(value) {
+            return dateToKasloHour(parsed)
+        }
+        if let localHour = parseClockTime(value) {
+            return localHour
+        }
+        return nil
+    }
+
+    private func dialAngleDegrees(forHour hour: Double) -> Double {
+        // Fixed orientation:
+        // 06:00 = left, 12:00 = top, 18:00 = right, 00:00 = bottom
+        (hour - 12.0) * 15.0 - 90.0
+    }
+
+    // Approximate twilight durations on each side of sunrise/sunset.
+    // These can be replaced with API-provided times later if available.
+    private var civilTwilightHours: Double { 0.5 }
+    private var nauticalTwilightHours: Double { 0.5 }
+    private var astronomicalTwilightHours: Double { 0.5 }
+    private var twilightTotalHours: Double {
+        civilTwilightHours + nauticalTwilightHours + astronomicalTwilightHours
+    }
+
+    private func isDaylightHour(_ hour: Double, sunrise: Double, sunset: Double) -> Bool {
+        let h = normalizeHour(hour)
+        let rise = normalizeHour(sunrise)
+        let set = normalizeHour(sunset)
+        if rise <= set {
+            return h >= rise && h <= set
+        } else {
+            return h >= rise || h <= set
+        }
+    }
+
+    private func normalizeHour(_ hour: Double) -> Double {
+        var h = hour.truncatingRemainder(dividingBy: 24.0)
+        if h < 0 { h += 24.0 }
+        return h
+    }
+
+    private func todayMonthLabel() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d MMM"
+        formatter.timeZone = TimeZone(identifier: "America/Vancouver")
+        return formatter.string(from: currentTime)
+    }
+
+    private func parseISODate(_ value: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: value) { return date }
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: value)
+    }
+
+    private func parseServerDateTime(_ value: String) -> Date? {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "America/Vancouver")
+
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        if let date = formatter.date(from: value) { return date }
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        return formatter.date(from: value)
+    }
+
+    private func parseClockTime(_ value: String) -> Double? {
+        let parts = value.split(separator: ":")
+        guard parts.count >= 2 else { return nil }
+        guard let hour = Int(parts[0]), let minute = Int(parts[1]) else { return nil }
+        guard (0...23).contains(hour), (0...59).contains(minute) else { return nil }
+        return Double(hour) + (Double(minute) / 60.0)
+    }
+
+    private func dateToKasloHour(_ date: Date) -> Double {
+        let calendar = Calendar(identifier: .gregorian)
+        let timeZone = TimeZone(identifier: "America/Vancouver") ?? .current
+        let components = calendar.dateComponents(in: timeZone, from: date)
+        let hour = Double(components.hour ?? 0)
+        let minute = Double(components.minute ?? 0)
+        return hour + (minute / 60.0)
     }
     
     // MARK: - Data Loading
@@ -321,5 +385,95 @@ struct WeatherSplashView: View {
         
         let decoder = JSONDecoder()
         return try decoder.decode(WeatherResponse.self, from: data)
+    }
+}
+
+private struct TimeSectorShape: Shape {
+    let startHour: Double
+    let endHour: Double
+
+    func path(in rect: CGRect) -> Path {
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let radius = min(rect.width, rect.height) / 2.0
+        let start = normalizeHour(startHour)
+        let end = normalizeHour(endHour)
+        let arcLength = normalizedArcLength(start: start, end: end)
+        let samples = 180
+
+        var path = Path()
+        path.move(to: center)
+        for i in 0...samples {
+            let t = Double(i) / Double(samples)
+            let hour = start + (arcLength * t)
+            let wrappedHour = normalizeHour(hour)
+            let angle = dialAngleDegrees(forHour: wrappedHour) * .pi / 180.0
+            let point = CGPoint(
+                x: center.x + radius * CGFloat(cos(angle)),
+                y: center.y + radius * CGFloat(sin(angle))
+            )
+            path.addLine(to: point)
+        }
+        path.closeSubpath()
+        return path
+    }
+
+    private func normalizeHour(_ hour: Double) -> Double {
+        var h = hour.truncatingRemainder(dividingBy: 24.0)
+        if h < 0 { h += 24.0 }
+        return h
+    }
+
+    private func normalizedArcLength(start: Double, end: Double) -> Double {
+        let length = end - start
+        return length >= 0 ? length : length + 24.0
+    }
+
+    private func dialAngleDegrees(forHour hour: Double) -> Double {
+        (hour - 12.0) * 15.0 - 90.0
+    }
+}
+
+private struct DaylightSectorShape: Shape {
+    let sunriseHour: Double
+    let sunsetHour: Double
+
+    func path(in rect: CGRect) -> Path {
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let radius = min(rect.width, rect.height) / 2.0
+        let sunrise = normalizeHour(sunriseHour)
+        let sunset = normalizeHour(sunsetHour)
+        let dayLength = normalizedDayLength(sunrise: sunrise, sunset: sunset)
+        let samples = 180
+
+        var path = Path()
+        path.move(to: center)
+        for i in 0...samples {
+            let t = Double(i) / Double(samples)
+            let hour = sunrise + (dayLength * t)
+            let wrappedHour = normalizeHour(hour)
+            let angle = dialAngleDegrees(forHour: wrappedHour) * .pi / 180.0
+            let point = CGPoint(
+                x: center.x + radius * CGFloat(cos(angle)),
+                y: center.y + radius * CGFloat(sin(angle))
+            )
+            path.addLine(to: point)
+        }
+        path.closeSubpath()
+        return path
+    }
+
+    private func normalizeHour(_ hour: Double) -> Double {
+        var h = hour.truncatingRemainder(dividingBy: 24.0)
+        if h < 0 { h += 24.0 }
+        return h
+    }
+
+    private func normalizedDayLength(sunrise: Double, sunset: Double) -> Double {
+        let length = sunset - sunrise
+        return length >= 0 ? length : length + 24.0
+    }
+
+    private func dialAngleDegrees(forHour hour: Double) -> Double {
+        (hour - 12.0) * 15.0 - 90.0
     }
 }

@@ -5,6 +5,8 @@ struct WeatherView: View {
     @State private var weather: WeatherResponse?
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var currentTime = Date()
+    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
     // MARK: - Initialization
     
@@ -20,7 +22,7 @@ struct WeatherView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 20) {
+                VStack(spacing: 2) {
                     if isLoading && weather == nil {
                         ProgressView("Loading weather...")
                             .frame(maxWidth: .infinity, maxHeight: 300)
@@ -43,23 +45,32 @@ struct WeatherView: View {
         .task {
             await loadWeather()
         }
+        .onReceive(timer) { time in
+            currentTime = time
+        }
     }
     
     // MARK: - Weather Content
     
     @ViewBuilder
     private func weatherContent(_ weather: WeatherResponse) -> some View {
-        // Current Conditions Card
+        Text(todayFullDateLabel())
+            .font(.headline.weight(.semibold))
+            .foregroundStyle(.primary)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.top, 0)
+
+        // Section 1: Current temperatures + humidity
         if let obs = weather.obs {
-            currentConditionsCard(obs)
+            currentTemperaturesCard(obs)
         }
-        
-        // Sun & Moon Card
-        sunMoonCard(sun: weather.sun, moon: weather.moon)
-        
-        // Indoor Conditions (if available)
-        if let obs = weather.obs, obs.indoorTemp != nil || obs.indoorHumidity != nil {
-            indoorConditionsCard(obs)
+
+        // Sundial between the two sections
+        sunMoonCard(weather)
+
+        // Section 2: All other weather information
+        if let obs = weather.obs {
+            otherConditionsCard(obs)
         }
         
         // Forecast
@@ -71,44 +82,90 @@ struct WeatherView: View {
     
     // MARK: - Current Conditions Card
     
-    private func currentConditionsCard(_ obs: WeatherObservation) -> some View {
-        VStack(spacing: 16) {
-            // Main Temperature
-            if let temp = obs.temp {
-                VStack(spacing: 4) {
+    private func currentTemperaturesCard(_ obs: WeatherObservation) -> some View {
+        HStack(alignment: .top, spacing: 20) {
+            // Outdoor
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Outdoor")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                if let temp = obs.temp {
                     Text("\(Int(temp.rounded()))°")
-                        .font(.system(size: 72, weight: .thin))
-                    if let feelsLike = obs.feelsLike, abs(feelsLike - temp) > 1 {
-                        Text("Feels like \(Int(feelsLike.rounded()))°")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
+                        .font(.system(size: 64, weight: .thin))
+                } else {
+                    Text("--")
+                        .font(.system(size: 64, weight: .thin))
+                }
+
+                if let humidity = obs.humidity {
+                    Label("\(humidity)%", systemImage: "humidity.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
             }
-            
-            Divider()
-            
-            // Weather Details Grid
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                if let humidity = obs.humidity {
-                    weatherDetail(icon: "humidity.fill", label: "Humidity", value: "\(humidity)%")
+
+            Spacer(minLength: 0)
+
+            // Indoor (same API payload)
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Indoor")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                if let indoorTemp = obs.indoorTemp {
+                    Text("\(Int(indoorTemp.rounded()))°C")
+                        .font(.title2.weight(.semibold))
+                } else {
+                    Text("--")
+                        .font(.title2.weight(.semibold))
                 }
-                if let dewPoint = obs.dewPoint {
-                    weatherDetail(icon: "drop.fill", label: "Dew Point", value: "\(Int(dewPoint.rounded()))°C")
+
+                if let indoorHumidity = obs.indoorHumidity {
+                    Label("\(indoorHumidity)%", systemImage: "humidity.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Label("--", systemImage: "humidity.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
-                if let pressure = obs.pressureHpa {
-                    weatherDetail(icon: "gauge.with.dots.needle.bottom.50percent", label: "Pressure", value: "\(Int(pressure.rounded())) hPa")
-                }
-                if let wind = obs.windSpeedKmh {
-                    let windText = obs.windGustKmh != nil ? "\(Int(wind)) / \(Int(obs.windGustKmh!)) km/h" : "\(Int(wind)) km/h"
-                    weatherDetail(icon: "wind", label: "Wind", value: windText)
-                }
-                if let precip24h = obs.precip24hMm {
-                    weatherDetail(icon: "cloud.rain.fill", label: "24h Rain", value: String(format: "%.1f mm", precip24h))
-                }
-                if let uv = obs.uvIndex {
-                    weatherDetail(icon: "sun.max.fill", label: "UV Index", value: String(format: "%.1f", uv))
-                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(Color(uiColor: .tertiarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .frame(minWidth: 130, alignment: .leading)
+        }
+        .padding()
+        .background(Color(uiColor: .secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func otherConditionsCard(_ obs: WeatherObservation) -> some View {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+            if let dewPoint = obs.dewPoint {
+                weatherDetail(icon: "drop.fill", label: "Dew Point", value: "\(Int(dewPoint.rounded()))°C")
+            }
+            if let pressure = obs.pressureHpa {
+                weatherDetail(icon: "gauge.with.dots.needle.bottom.50percent", label: "Pressure", value: "\(Int(pressure.rounded())) hPa")
+            }
+            if let wind = obs.windSpeedKmh {
+                let windText = obs.windGustKmh != nil ? "\(Int(wind)) / \(Int(obs.windGustKmh!)) km/h" : "\(Int(wind)) km/h"
+                weatherDetail(icon: "wind", label: "Wind", value: windText)
+            }
+            weatherDetail(
+                icon: "cloud.rain.fill",
+                label: "Now (Precip)",
+                value: obs.precipRateMmh.map { String(format: "%.1f mm/h", $0) } ?? "--"
+            )
+            weatherDetail(
+                icon: "drop.fill",
+                label: "Prev 24h",
+                value: obs.precip24hMm.map { String(format: "%.1f mm", $0) } ?? "--"
+            )
+            if let uv = obs.uvIndex {
+                weatherDetail(icon: "sun.max.fill", label: "UV Index", value: String(format: "%.1f", uv))
             }
         }
         .padding()
@@ -132,63 +189,95 @@ struct WeatherView: View {
     
     // MARK: - Sun & Moon Card
     
-    private func sunMoonCard(sun: SunPosition, moon: MoonPhase) -> some View {
-        VStack(spacing: 16) {
-            // Sun Position Dial
-            if let angle = sun.nowAngle, let isDaytime = sun.isDaytime {
-                VStack(spacing: 8) {
-                    ZStack {
-                        Circle()
-                            .stroke(Color.blue.opacity(0.2), lineWidth: 3)
-                            .frame(width: 120, height: 120)
-                        
-                        Circle()
-                            .fill(isDaytime ? Color.yellow : Color.blue.opacity(0.3))
-                            .frame(width: 20, height: 20)
-                            .offset(y: -50)
-                            .rotationEffect(.degrees(angle))
-                        
-                        Text(isDaytime ? "☀️" : "🌙")
-                            .font(.title)
+    private func sunMoonCard(_ weather: WeatherResponse) -> some View {
+        let sunrise = resolvedSunriseHour(weather.sun)
+        let sunset = resolvedSunsetHour(weather.sun)
+
+        return VStack(spacing: 16) {
+            GeometryReader { geometry in
+                let size = min(geometry.size.width, geometry.size.height)
+                let center = CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2)
+
+                ZStack {
+                    Circle()
+                        .fill(Color(red: 0.05, green: 0.08, blue: 0.2))
+                        .frame(width: size * 0.85, height: size * 0.85)
+
+                    WeatherPageTimeSectorShape(
+                        startHour: sunrise - twilightTotalHours,
+                        endHour: sunset + twilightTotalHours
+                    )
+                    .fill(Color(red: 0.10, green: 0.20, blue: 0.42))
+                    .frame(width: size * 0.85, height: size * 0.85)
+
+                    WeatherPageTimeSectorShape(
+                        startHour: sunrise - (civilTwilightHours + nauticalTwilightHours),
+                        endHour: sunset + (civilTwilightHours + nauticalTwilightHours)
+                    )
+                    .fill(Color(red: 0.16, green: 0.30, blue: 0.55))
+                    .frame(width: size * 0.85, height: size * 0.85)
+
+                    WeatherPageTimeSectorShape(
+                        startHour: sunrise - civilTwilightHours,
+                        endHour: sunset + civilTwilightHours
+                    )
+                    .fill(Color(red: 0.24, green: 0.44, blue: 0.72))
+                    .frame(width: size * 0.85, height: size * 0.85)
+
+                    WeatherPageDaylightSectorShape(
+                        sunriseHour: sunrise,
+                        sunsetHour: sunset
+                    )
+                    .fill(Color(red: 1.0, green: 0.95, blue: 0.3))
+                    .frame(width: size * 0.85, height: size * 0.85)
+
+                    Text(todayMonthLabel())
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .position(x: center.x, y: center.y - (size * 0.12))
+
+                    sunIndicator(hour: currentHourInKaslo(), center: center, radius: size * 0.30)
+
+                    ForEach(0..<24, id: \.self) { hour in
+                        hourLabel(hour: hour, center: center, radius: size * 0.385, sunriseHour: sunrise, sunsetHour: sunset)
                     }
-                    
-                    if let sunrise = sun.sunrise, let sunset = sun.sunset {
-                        HStack(spacing: 20) {
-                            VStack(spacing: 2) {
-                                Text("Sunrise")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Text(formatTime(sunrise))
-                                    .font(.subheadline.weight(.medium))
-                            }
-                            VStack(spacing: 2) {
-                                Text("Sunset")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Text(formatTime(sunset))
-                                    .font(.subheadline.weight(.medium))
-                            }
-                        }
-                    }
-                    
-                    if let daylight = sun.daylightMinutes {
-                        Text("\(daylight / 60)h \(daylight % 60)m of daylight")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+
+                    moonIndicator(emoji: weather.moon.emoji ?? "🌑", center: center, radius: size * 0.35)
+                }
+                .frame(width: geometry.size.width, height: geometry.size.height)
+            }
+            .frame(maxWidth: .infinity)
+            .aspectRatio(1, contentMode: .fit)
+            .padding(.horizontal, 2)
+
+            HStack(spacing: 20) {
+                VStack(spacing: 2) {
+                    Text("Sunrise")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(formatHourValue(sunrise))
+                        .font(.subheadline.weight(.medium))
+                }
+                VStack(spacing: 2) {
+                    Text("Sunset")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(formatHourValue(sunset))
+                        .font(.subheadline.weight(.medium))
                 }
             }
-            
-            Divider()
-            
-            // Moon Phase
-            if let moonEmoji = moon.emoji, let moonName = moon.name {
+
+            if let daylight = weather.sun.daylightMinutes {
+                Text("\(daylight / 60)h \(daylight % 60)m of daylight")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let moonName = weather.moon.name {
                 VStack(spacing: 8) {
-                    Text(moonEmoji)
-                        .font(.system(size: 60))
                     Text(moonName)
                         .font(.headline)
-                    if let illumination = moon.illumination {
+                    if let illumination = weather.moon.illumination {
                         Text("\(Int(illumination * 100))% illuminated")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -196,41 +285,7 @@ struct WeatherView: View {
                 }
             }
         }
-        .padding()
-        .background(Color(uiColor: .secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-    }
-    
-    // MARK: - Indoor Conditions Card
-    
-    private func indoorConditionsCard(_ obs: WeatherObservation) -> some View {
-        VStack(spacing: 12) {
-            Label("Indoor Conditions", systemImage: "house.fill")
-                .font(.headline)
-            
-            HStack(spacing: 40) {
-                if let temp = obs.indoorTemp {
-                    VStack(spacing: 4) {
-                        Text("\(Int(temp.rounded()))°C")
-                            .font(.title2.weight(.semibold))
-                        Text("Temperature")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                if let humidity = obs.indoorHumidity {
-                    VStack(spacing: 4) {
-                        Text("\(humidity)%")
-                            .font(.title2.weight(.semibold))
-                        Text("Humidity")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding()
+        .padding(1)
         .background(Color(uiColor: .secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
@@ -416,11 +471,25 @@ struct WeatherView: View {
     // MARK: - Helpers
     
     private func formatTime(_ isoString: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        guard let date = formatter.date(from: isoString) else { return isoString }
-        
+        let raw = isoString.trimmingCharacters(in: .whitespacesAndNewlines)
+        let date: Date?
+        if let parsed = parseISODate(raw) {
+            date = parsed
+        } else if let parsed = parseServerDateTime(raw) {
+            date = parsed
+        } else {
+            date = nil
+        }
+
+        if let parts = parseClockTime(raw), date == nil {
+            let h = Int(parts)
+            let m = Int((parts - Double(h)) * 60.0)
+            return String(format: "%02d:%02d", h, m)
+        }
+
+        guard let date else { return "--:--" }
         let timeFormatter = DateFormatter()
-        timeFormatter.timeStyle = .short
+        timeFormatter.dateFormat = "HH:mm"
         timeFormatter.timeZone = TimeZone(identifier: "America/Vancouver")
         return timeFormatter.string(from: date)
     }
@@ -445,6 +514,296 @@ struct WeatherView: View {
         let formatter = ISO8601DateFormatter()
         guard let date = formatter.date(from: isoString) else { return isoString }
         return date.formatted(.relative(presentation: .named))
+    }
+
+    private func hourLabel(hour: Int, center: CGPoint, radius: CGFloat, sunriseHour: Double, sunsetHour: Double) -> some View {
+        let angle = dialAngleDegrees(forHour: Double(hour))
+        let displayHour = hour == 0 ? 24 : hour
+        let daylight = isDaylightHour(Double(hour), sunrise: sunriseHour, sunset: sunsetHour)
+
+        return Text("\(displayHour)")
+            .font(.system(size: 13, weight: .medium, design: .rounded))
+            .foregroundStyle(daylight ? Color(red: 0.05, green: 0.15, blue: 0.35) : .white)
+            .position(
+                x: center.x + radius * CGFloat(cos(angle * .pi / 180)),
+                y: center.y + radius * CGFloat(sin(angle * .pi / 180))
+            )
+    }
+
+    private func sunIndicator(hour: Double, center: CGPoint, radius: CGFloat) -> some View {
+        let adjustedAngle = dialAngleDegrees(forHour: hour)
+
+        return ZStack {
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [Color.white.opacity(0.75), Color.white.opacity(0)],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 30
+                    )
+                )
+                .frame(width: 56, height: 56)
+
+            Circle()
+                .fill(Color.white)
+                .frame(width: 20, height: 20)
+                .overlay(
+                    Circle()
+                        .stroke(Color.orange.opacity(0.7), lineWidth: 1.5)
+                )
+                .shadow(color: .white.opacity(0.95), radius: 12)
+        }
+        .position(
+            x: center.x + radius * CGFloat(cos(adjustedAngle * .pi / 180)),
+            y: center.y + radius * CGFloat(sin(adjustedAngle * .pi / 180))
+        )
+    }
+
+    private func moonIndicator(emoji: String, center: CGPoint, radius: CGFloat) -> some View {
+        ZStack {
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [Color.white.opacity(0.3), Color.white.opacity(0)],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 20
+                    )
+                )
+                .frame(width: 40, height: 40)
+
+            Text(emoji)
+                .font(.system(size: 60))
+        }
+        .position(
+            x: center.x,
+            y: center.y + (radius * 0.5)
+        )
+    }
+
+    private func currentHourInKaslo() -> Double {
+        let calendar = Calendar(identifier: .gregorian)
+        let timeZone = TimeZone(identifier: "America/Vancouver") ?? .current
+        let components = calendar.dateComponents(in: timeZone, from: currentTime)
+        let hour = Double(components.hour ?? 0)
+        let minute = Double(components.minute ?? 0)
+        let second = Double(components.second ?? 0)
+        return hour + (minute / 60.0) + (second / 3600.0)
+    }
+
+    private func hourInKaslo(from isoString: String?) -> Double? {
+        guard let isoString else { return nil }
+        let value = isoString.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if let parsed = parseISODate(value) {
+            return dateToKasloHour(parsed)
+        }
+        if let parsed = parseServerDateTime(value) {
+            return dateToKasloHour(parsed)
+        }
+        if let localHour = parseClockTime(value) {
+            return localHour
+        }
+        return nil
+    }
+
+    private func dialAngleDegrees(forHour hour: Double) -> Double {
+        (hour - 12.0) * 15.0 - 90.0
+    }
+
+    private func todayMonthLabel() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d MMM"
+        formatter.timeZone = TimeZone(identifier: "America/Vancouver")
+        return formatter.string(from: currentTime)
+    }
+
+    private func todayFullDateLabel() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE, d MMMM yyyy"
+        formatter.timeZone = TimeZone(identifier: "America/Vancouver")
+        return formatter.string(from: currentTime)
+    }
+
+    private var civilTwilightHours: Double { 0.5 }
+    private var nauticalTwilightHours: Double { 0.5 }
+    private var astronomicalTwilightHours: Double { 0.5 }
+    private var twilightTotalHours: Double {
+        civilTwilightHours + nauticalTwilightHours + astronomicalTwilightHours
+    }
+
+    private func resolvedSunriseHour(_ sun: SunPosition) -> Double {
+        if let hour = hourInKaslo(from: sun.sunrise) {
+            return hour
+        }
+        if let daylightMinutes = sun.daylightMinutes {
+            let halfDay = Double(daylightMinutes) / 120.0
+            return 12.0 - halfDay
+        }
+        return 6.0
+    }
+
+    private func resolvedSunsetHour(_ sun: SunPosition) -> Double {
+        if let hour = hourInKaslo(from: sun.sunset) {
+            return hour
+        }
+        if let daylightMinutes = sun.daylightMinutes {
+            let halfDay = Double(daylightMinutes) / 120.0
+            return 12.0 + halfDay
+        }
+        return 18.0
+    }
+
+    private func isDaylightHour(_ hour: Double, sunrise: Double, sunset: Double) -> Bool {
+        let h = normalizeHour(hour)
+        let rise = normalizeHour(sunrise)
+        let set = normalizeHour(sunset)
+        if rise <= set {
+            return h >= rise && h <= set
+        } else {
+            return h >= rise || h <= set
+        }
+    }
+
+    private func normalizeHour(_ hour: Double) -> Double {
+        var h = hour.truncatingRemainder(dividingBy: 24.0)
+        if h < 0 { h += 24.0 }
+        return h
+    }
+
+    private func parseISODate(_ value: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: value) { return date }
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: value)
+    }
+
+    private func parseServerDateTime(_ value: String) -> Date? {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "America/Vancouver")
+
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        if let date = formatter.date(from: value) { return date }
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        return formatter.date(from: value)
+    }
+
+    private func parseClockTime(_ value: String) -> Double? {
+        let parts = value.split(separator: ":")
+        guard parts.count >= 2 else { return nil }
+        guard let hour = Int(parts[0]), let minute = Int(parts[1]) else { return nil }
+        guard (0...23).contains(hour), (0...59).contains(minute) else { return nil }
+        return Double(hour) + (Double(minute) / 60.0)
+    }
+
+    private func dateToKasloHour(_ date: Date) -> Double {
+        let calendar = Calendar(identifier: .gregorian)
+        let timeZone = TimeZone(identifier: "America/Vancouver") ?? .current
+        let components = calendar.dateComponents(in: timeZone, from: date)
+        let hour = Double(components.hour ?? 0)
+        let minute = Double(components.minute ?? 0)
+        return hour + (minute / 60.0)
+    }
+
+    private func formatHourValue(_ hour: Double) -> String {
+        let normalized = normalizeHour(hour)
+        let totalMinutes = Int((normalized * 60.0).rounded())
+        let h = (totalMinutes / 60) % 24
+        let m = totalMinutes % 60
+        return String(format: "%02d:%02d", h, m)
+    }
+}
+
+private struct WeatherPageTimeSectorShape: Shape {
+    let startHour: Double
+    let endHour: Double
+
+    func path(in rect: CGRect) -> Path {
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let radius = min(rect.width, rect.height) / 2.0
+        let start = normalizeHour(startHour)
+        let end = normalizeHour(endHour)
+        let arcLength = normalizedArcLength(start: start, end: end)
+        let samples = 180
+
+        var path = Path()
+        path.move(to: center)
+        for i in 0...samples {
+            let t = Double(i) / Double(samples)
+            let hour = start + (arcLength * t)
+            let wrappedHour = normalizeHour(hour)
+            let angle = dialAngleDegrees(forHour: wrappedHour) * .pi / 180.0
+            let point = CGPoint(
+                x: center.x + radius * CGFloat(cos(angle)),
+                y: center.y + radius * CGFloat(sin(angle))
+            )
+            path.addLine(to: point)
+        }
+        path.closeSubpath()
+        return path
+    }
+
+    private func normalizeHour(_ hour: Double) -> Double {
+        var h = hour.truncatingRemainder(dividingBy: 24.0)
+        if h < 0 { h += 24.0 }
+        return h
+    }
+
+    private func normalizedArcLength(start: Double, end: Double) -> Double {
+        let length = end - start
+        return length >= 0 ? length : length + 24.0
+    }
+
+    private func dialAngleDegrees(forHour hour: Double) -> Double {
+        (hour - 12.0) * 15.0 - 90.0
+    }
+}
+
+private struct WeatherPageDaylightSectorShape: Shape {
+    let sunriseHour: Double
+    let sunsetHour: Double
+
+    func path(in rect: CGRect) -> Path {
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let radius = min(rect.width, rect.height) / 2.0
+        let sunrise = normalizeHour(sunriseHour)
+        let sunset = normalizeHour(sunsetHour)
+        let dayLength = normalizedDayLength(sunrise: sunrise, sunset: sunset)
+        let samples = 180
+
+        var path = Path()
+        path.move(to: center)
+        for i in 0...samples {
+            let t = Double(i) / Double(samples)
+            let hour = sunrise + (dayLength * t)
+            let wrappedHour = normalizeHour(hour)
+            let angle = dialAngleDegrees(forHour: wrappedHour) * .pi / 180.0
+            let point = CGPoint(
+                x: center.x + radius * CGFloat(cos(angle)),
+                y: center.y + radius * CGFloat(sin(angle))
+            )
+            path.addLine(to: point)
+        }
+        path.closeSubpath()
+        return path
+    }
+
+    private func normalizeHour(_ hour: Double) -> Double {
+        var h = hour.truncatingRemainder(dividingBy: 24.0)
+        if h < 0 { h += 24.0 }
+        return h
+    }
+
+    private func normalizedDayLength(sunrise: Double, sunset: Double) -> Double {
+        let length = sunset - sunrise
+        return length >= 0 ? length : length + 24.0
+    }
+
+    private func dialAngleDegrees(forHour hour: Double) -> Double {
+        (hour - 12.0) * 15.0 - 90.0
     }
 }
 
