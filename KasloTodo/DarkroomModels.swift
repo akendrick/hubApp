@@ -17,6 +17,21 @@ struct DRChemistry: Identifiable, Codable {
     var percentSolution: Double?
     var createdFromIds: String?
     var notes: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, dateCreated, typeId, typeName, percentSolution, createdFromIds, notes
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(Int.self, forKey: .id)
+        dateCreated = try c.decode(String.self, forKey: .dateCreated)
+        typeId = c.decodeLossyInt(forKey: .typeId)
+        typeName = try? c.decodeIfPresent(String.self, forKey: .typeName)
+        percentSolution = c.decodeLossyDouble(forKey: .percentSolution)
+        createdFromIds = try? c.decodeIfPresent(String.self, forKey: .createdFromIds)
+        notes = try? c.decodeIfPresent(String.self, forKey: .notes)
+    }
 }
 
 // MARK: - Paper
@@ -33,6 +48,22 @@ struct DRPaper: Identifiable, Codable {
 
     var displayName: String {
         [manufacturer, label].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " ")
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, manufacturer, label, weight, hotPress, treatmentChemistryId, treatmentLabel, notes
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(Int.self, forKey: .id)
+        manufacturer = try? c.decodeIfPresent(String.self, forKey: .manufacturer)
+        label = try? c.decodeIfPresent(String.self, forKey: .label)
+        weight = c.decodeLossyDouble(forKey: .weight)
+        hotPress = c.decodeLossyInt(forKey: .hotPress)
+        treatmentChemistryId = c.decodeLossyInt(forKey: .treatmentChemistryId)
+        treatmentLabel = try? c.decodeIfPresent(String.self, forKey: .treatmentLabel)
+        notes = try? c.decodeIfPresent(String.self, forKey: .notes)
     }
 }
 
@@ -52,6 +83,23 @@ struct DRSupportPaper: Identifiable, Codable {
     var displayName: String {
         let base = paperLabel ?? [manufacturer, label].compactMap { $0 }.joined(separator: " ")
         return "\(mark) (\(base))"
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, paperId, mark, paperLabel, manufacturer, label, weight, hotPress, notes
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(Int.self, forKey: .id)
+        paperId = try c.decode(Int.self, forKey: .paperId)
+        mark = try c.decode(String.self, forKey: .mark)
+        paperLabel = try? c.decodeIfPresent(String.self, forKey: .paperLabel)
+        manufacturer = try? c.decodeIfPresent(String.self, forKey: .manufacturer)
+        label = try? c.decodeIfPresent(String.self, forKey: .label)
+        weight = c.decodeLossyDouble(forKey: .weight)
+        hotPress = c.decodeLossyInt(forKey: .hotPress)
+        notes = try? c.decodeIfPresent(String.self, forKey: .notes)
     }
 }
 
@@ -98,7 +146,7 @@ struct DRExposureTime: Codable, Identifiable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = UUID()
-        durationMinutes = try? c.decodeIfPresent(Double.self, forKey: .durationMinutes)
+        durationMinutes = c.decodeLossyDouble(forKey: .durationMinutes)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -124,6 +172,30 @@ struct DRExposure: Identifiable, Codable {
     var coolDevelopTime: Int?
     var coolDevelopTemp: Double?
     var notes: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, dateExposed, testStrip, negativeId, negType, negDate, times
+        case paperSoakTime, paperSoakTemp, hotDevelopTime, hotDevelopTemp
+        case coolDevelopTime, coolDevelopTemp, notes
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(Int.self, forKey: .id)
+        dateExposed = try c.decode(String.self, forKey: .dateExposed)
+        testStrip = c.decodeLossyInt(forKey: .testStrip)
+        negativeId = c.decodeLossyInt(forKey: .negativeId)
+        negType = try? c.decodeIfPresent(String.self, forKey: .negType)
+        negDate = try? c.decodeIfPresent(String.self, forKey: .negDate)
+        times = (try? c.decode([DRExposureTime].self, forKey: .times)) ?? []
+        paperSoakTime = c.decodeLossyInt(forKey: .paperSoakTime)
+        paperSoakTemp = c.decodeLossyDouble(forKey: .paperSoakTemp)
+        hotDevelopTime = c.decodeLossyInt(forKey: .hotDevelopTime)
+        hotDevelopTemp = c.decodeLossyDouble(forKey: .hotDevelopTemp)
+        coolDevelopTime = c.decodeLossyInt(forKey: .coolDevelopTime)
+        coolDevelopTemp = c.decodeLossyDouble(forKey: .coolDevelopTemp)
+        notes = try? c.decodeIfPresent(String.self, forKey: .notes)
+    }
 }
 
 // MARK: - Photo + Layers
@@ -188,6 +260,27 @@ struct DRPhoto: Identifiable, Codable {
     var exposureDate: String?
     var notes: String?
     var layers: [DRPhotoLayer]
+}
+
+private extension KeyedDecodingContainer {
+    func decodeLossyDouble(forKey key: Key) -> Double? {
+        if let d = try? decodeIfPresent(Double.self, forKey: key) { return d }
+        if let i = try? decodeIfPresent(Int.self, forKey: key) { return Double(i) }
+        if let s = try? decodeIfPresent(String.self, forKey: key) {
+            return Double(s.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+        return nil
+    }
+
+    func decodeLossyInt(forKey key: Key) -> Int? {
+        if let i = try? decodeIfPresent(Int.self, forKey: key) { return i }
+        if let d = try? decodeIfPresent(Double.self, forKey: key) { return Int(d.rounded()) }
+        if let s = try? decodeIfPresent(String.self, forKey: key),
+           let d = Double(s.trimmingCharacters(in: .whitespacesAndNewlines)) {
+            return Int(d.rounded())
+        }
+        return nil
+    }
 }
 
 // MARK: - Request bodies (sent to API on POST / PATCH)

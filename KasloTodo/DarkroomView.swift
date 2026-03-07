@@ -16,16 +16,12 @@ private func drFormatDate(_ d: Date) -> String {
 
 struct DarkroomView: View {
     @ObservedObject var store: DarkroomStore
-    @State private var selectedTab: DRTab = .chemistry
+    @State private var selectedTab: DRTab = .photos
 
     enum DRTab: String, CaseIterable {
         case photos       = "Photos"
-        case exposures    = "Exposures"
         case negatives    = "Negatives"
-        case supportPaper = "Support Paper"
-        case carbonTissue = "Carbon Tissue"
-        case paper        = "Paper"
-        case chemistry    = "Chemistry"
+        case more         = "More"
     }
 
     var body: some View {
@@ -36,12 +32,8 @@ struct DarkroomView: View {
                 Group {
                     switch selectedTab {
                     case .photos:       DRPhotosTab(store: store)
-                    case .exposures:    DRExposuresTab(store: store)
                     case .negatives:    DRNegativesTab(store: store)
-                    case .supportPaper: DRSupportPaperTab(store: store)
-                    case .carbonTissue: DRCarbonTissueTab(store: store)
-                    case .paper:        DRPaperTab(store: store)
-                    case .chemistry:    DRChemistryTab(store: store)
+                    case .more:         DRMoreTab(store: store)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -61,29 +53,408 @@ struct DarkroomView: View {
     }
 
     private var drTabBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 4) {
-                ForEach(DRTab.allCases, id: \.self) { tab in
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.15)) { selectedTab = tab }
-                    } label: {
-                        Text(tab.rawValue)
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 7)
-                            .background(selectedTab == tab ? Color.primary : Color.clear)
-                            .foregroundStyle(selectedTab == tab
-                                ? Color(uiColor: .systemBackground)
-                                : Color.primary)
-                            .clipShape(Capsule())
+        HStack(spacing: 10) {
+            ForEach(DRTab.allCases, id: \.self) { tab in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) { selectedTab = tab }
+                } label: {
+                    Text(tab.rawValue)
+                        .font(.callout.weight(.semibold))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(selectedTab == tab ? Color.primary : Color.clear)
+                        .foregroundStyle(selectedTab == tab
+                            ? Color(uiColor: .systemBackground)
+                            : Color.primary)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color(uiColor: .systemGroupedBackground))
+    }
+}
+
+private enum DRMoreSection: String, CaseIterable, Hashable, Identifiable {
+    case carbonTissue = "Carbon Tissue"
+    case chemistry = "Chemistry"
+    case exposures = "Exposures"
+    case paper = "Paper"
+    case supportPaper = "Support Paper"
+
+    var id: String { rawValue }
+}
+
+struct DRMoreTab: View {
+    @ObservedObject var store: DarkroomStore
+    @State private var sectionOrder: [DRMoreSection] = DRMoreSection.allCases
+    @State private var expandedSections: Set<DRMoreSection> = []
+    @State private var visibleCounts: [DRMoreSection: Int] = [:]
+
+    @State private var showChemistryForm = false
+    @State private var chemistryEditTarget: DRChemistry?
+    @State private var showPaperForm = false
+    @State private var paperEditTarget: DRPaper?
+    @State private var showSupportPaperForm = false
+    @State private var supportPaperEditTarget: DRSupportPaper?
+    @State private var showCarbonTissueForm = false
+    @State private var carbonTissueEditTarget: DRCarbonTissue?
+    @State private var showExposureForm = false
+    @State private var exposureEditTarget: DRExposure?
+
+    var body: some View {
+        List {
+            ForEach(sectionOrder, id: \.self) { section in
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        Button {
+                            toggle(section)
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: expandedSections.contains(section) ? "chevron.down" : "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                Text(section.rawValue)
+                                    .font(.headline.weight(.bold))
+                            }
+                        }
+                        .buttonStyle(.plain)
+
+                        Spacer()
+
+                        Button {
+                            presentCreate(for: section)
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.caption.weight(.bold))
+                                .frame(width: 22, height: 22)
+                                .background(Color(uiColor: .tertiarySystemGroupedBackground))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+
+                    if expandedSections.contains(section) {
+                        sectionContent(section)
+                            .padding(.leading, 18)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            .onMove(perform: moveSections)
+        }
+        .listStyle(.insetGrouped)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                EditButton()
+            }
+        }
+        .sheet(isPresented: $showChemistryForm, onDismiss: { chemistryEditTarget = nil }) {
+            DRChemistryForm(store: store, target: chemistryEditTarget) { showChemistryForm = false }
+        }
+        .sheet(isPresented: $showPaperForm, onDismiss: { paperEditTarget = nil }) {
+            DRPaperForm(store: store, target: paperEditTarget) { showPaperForm = false }
+        }
+        .sheet(isPresented: $showSupportPaperForm, onDismiss: { supportPaperEditTarget = nil }) {
+            DRSupportPaperForm(store: store, target: supportPaperEditTarget) { showSupportPaperForm = false }
+        }
+        .sheet(isPresented: $showCarbonTissueForm, onDismiss: { carbonTissueEditTarget = nil }) {
+            DRCarbonTissueForm(store: store, target: carbonTissueEditTarget) { showCarbonTissueForm = false }
+        }
+        .sheet(isPresented: $showExposureForm, onDismiss: { exposureEditTarget = nil }) {
+            DRExposureForm(store: store, target: exposureEditTarget) { showExposureForm = false }
+        }
+        .task { await loadAllMoreData() }
+        .refreshable { await loadAllMoreData() }
+    }
+
+    @ViewBuilder
+    private func sectionContent(_ section: DRMoreSection) -> some View {
+        switch section {
+        case .carbonTissue:
+            if store.carbonTissues.isEmpty {
+                Text("No carbon tissue batches")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                let sortedItems = store.carbonTissues.sorted {
+                    drParseDate($0.datePoured) > drParseDate($1.datePoured)
+                }
+                let total = sortedItems.count
+                let visible = visibleCount(for: .carbonTissue, total: total)
+                ForEach(Array(sortedItems.prefix(visible))) { ct in
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack {
+                            Text("#\(ct.id)")
+                                .font(.subheadline.weight(.semibold))
+                            if let sz = ct.size {
+                                Text(sz)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Text(ct.datePoured)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        if let n = ct.notes, !n.isEmpty {
+                            Text(n)
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                                .lineLimit(1)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        carbonTissueEditTarget = ct
+                        showCarbonTissueForm = true
+                    }
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) { Task { await store.deleteCarbonTissue(id: ct.id) } }
+                        label: { Label("Delete", systemImage: "trash") }
+                    }
+                }
+                if visible < total {
+                    showMoreButton(for: .carbonTissue, total: total)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+
+        case .chemistry:
+            if store.chemistry.isEmpty {
+                Text("No chemistry batches")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                let sortedItems = store.chemistry.sorted {
+                    drParseDate($0.dateCreated) > drParseDate($1.dateCreated)
+                }
+                let total = sortedItems.count
+                let visible = visibleCount(for: .chemistry, total: total)
+                ForEach(Array(sortedItems.prefix(visible))) { c in
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack {
+                            Text(c.typeName ?? "Chemistry")
+                                .font(.subheadline.weight(.semibold))
+                            Spacer()
+                            Text(c.dateCreated)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        if let pct = c.percentSolution {
+                            Text(String(format: "%.1f%% solution", pct))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        chemistryEditTarget = c
+                        showChemistryForm = true
+                    }
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) { Task { await store.deleteChemistry(id: c.id) } }
+                        label: { Label("Delete", systemImage: "trash") }
+                    }
+                }
+                if visible < total {
+                    showMoreButton(for: .chemistry, total: total)
+                }
+            }
+
+        case .exposures:
+            if store.exposures.isEmpty {
+                Text("No exposures")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                let sortedItems = store.exposures.sorted {
+                    drParseDate($0.dateExposed) > drParseDate($1.dateExposed)
+                }
+                let total = sortedItems.count
+                let visible = visibleCount(for: .exposures, total: total)
+                ForEach(Array(sortedItems.prefix(visible))) { e in
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack {
+                            if e.testStrip == 1 {
+                                Text("Test Strip")
+                                    .font(.caption2.weight(.bold))
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 1)
+                                    .background(Color.orange.opacity(0.2))
+                                    .foregroundStyle(.orange)
+                                    .clipShape(Capsule())
+                            }
+                            Spacer()
+                            Text(e.dateExposed)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        if !e.times.isEmpty {
+                            Text(e.times.compactMap { $0.durationMinutes }.map { String(format: "%.0f′", $0) }.joined(separator: " · "))
+                                .font(.caption2.monospaced())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        exposureEditTarget = e
+                        showExposureForm = true
+                    }
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) { Task { await store.deleteExposure(id: e.id) } }
+                        label: { Label("Delete", systemImage: "trash") }
+                    }
+                }
+                if visible < total {
+                    showMoreButton(for: .exposures, total: total)
+                }
+            }
+
+        case .paper:
+            if store.papers.isEmpty {
+                Text("No paper stocks")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                let sortedItems = store.papers.sorted { $0.id > $1.id }
+                let total = sortedItems.count
+                let visible = visibleCount(for: .paper, total: total)
+                ForEach(Array(sortedItems.prefix(visible))) { p in
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack {
+                            Text(p.displayName.isEmpty ? "Paper #\(p.id)" : p.displayName)
+                                .font(.subheadline.weight(.semibold))
+                            Spacer()
+                            if p.hotPress == 1 {
+                                Text("HP")
+                                    .font(.caption2.weight(.bold))
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 1)
+                                    .background(Color.blue.opacity(0.15))
+                                    .foregroundStyle(.blue)
+                                    .clipShape(Capsule())
+                            }
+                        }
+                        if let w = p.weight {
+                            Text(String(format: "%.0f gsm", w))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        paperEditTarget = p
+                        showPaperForm = true
+                    }
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) { Task { await store.deletePaper(id: p.id) } }
+                        label: { Label("Delete", systemImage: "trash") }
+                    }
+                }
+                if visible < total {
+                    showMoreButton(for: .paper, total: total)
+                }
+            }
+
+        case .supportPaper:
+            if store.supportPapers.isEmpty {
+                Text("No support papers")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                let sortedItems = store.supportPapers.sorted { $0.id > $1.id }
+                let total = sortedItems.count
+                let visible = visibleCount(for: .supportPaper, total: total)
+                ForEach(Array(sortedItems.prefix(visible))) { sp in
+                    HStack(spacing: 8) {
+                        Text(sp.mark)
+                            .font(.caption.weight(.bold))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2)
+                            .background(Color.green)
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 5))
+                        Text(sp.paperLabel ?? sp.displayName)
+                            .font(.subheadline)
+                        Spacer()
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        supportPaperEditTarget = sp
+                        showSupportPaperForm = true
+                    }
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) { Task { await store.deleteSupportPaper(id: sp.id) } }
+                        label: { Label("Delete", systemImage: "trash") }
+                    }
+                }
+                if visible < total {
+                    showMoreButton(for: .supportPaper, total: total)
+                }
+            }
         }
-        .background(Color(uiColor: .systemGroupedBackground))
+    }
+
+    private func toggle(_ section: DRMoreSection) {
+        if expandedSections.contains(section) {
+            expandedSections.remove(section)
+        } else {
+            expandedSections.insert(section)
+        }
+    }
+
+    private func presentCreate(for section: DRMoreSection) {
+        switch section {
+        case .carbonTissue:
+            carbonTissueEditTarget = nil
+            showCarbonTissueForm = true
+        case .chemistry:
+            chemistryEditTarget = nil
+            showChemistryForm = true
+        case .exposures:
+            exposureEditTarget = nil
+            showExposureForm = true
+        case .paper:
+            paperEditTarget = nil
+            showPaperForm = true
+        case .supportPaper:
+            supportPaperEditTarget = nil
+            showSupportPaperForm = true
+        }
+    }
+
+    private func moveSections(from source: IndexSet, to destination: Int) {
+        sectionOrder.move(fromOffsets: source, toOffset: destination)
+    }
+
+    private func loadAllMoreData() async {
+        await store.loadChemistry()
+        await store.loadPapers()
+        await store.loadSupportPapers()
+        await store.loadCarbonTissues()
+        await store.loadNegatives()
+        await store.loadExposures()
+    }
+
+    private func visibleCount(for section: DRMoreSection, total: Int) -> Int {
+        min(visibleCounts[section] ?? 10, total)
+    }
+
+    @ViewBuilder
+    private func showMoreButton(for section: DRMoreSection, total: Int) -> some View {
+        Button {
+            let current = visibleCounts[section] ?? 10
+            visibleCounts[section] = min(current + 10, total)
+        } label: {
+            Text("Show more")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.blue)
+        }
+        .buttonStyle(.plain)
+        .padding(.top, 2)
     }
 }
 
