@@ -17,6 +17,8 @@ struct EditItemView: View {
     @State private var done      = false  // Completion state
 
     @State private var isSaving  = false
+    @State private var tagToDelete: String?
+    @State private var showDeleteTagDialog = false
     @State private var errorMsg: String?
 
     private var isEditing: Bool { item != nil }
@@ -24,31 +26,71 @@ struct EditItemView: View {
     var body: some View {
         NavigationStack {
             Form {
+                // ── Existing tags ───────────────────────────────────
+                if !store.allTags.isEmpty {
+                    Section {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 4) {
+                                ForEach(store.allTags, id: \.self) { tag in
+                                    let isSelected = tags.contains(tag)
+                                    Text(tag)
+                                        .font(.subheadline.weight(.semibold))
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(isSelected ? Color.black : Color(uiColor: .systemGray5))
+                                        .foregroundStyle(isSelected ? .white : .primary)
+                                        .clipShape(Capsule())
+                                        .contentShape(Capsule())
+                                        .onTapGesture {
+                                            toggleTag(tag)
+                                        }
+                                        .onLongPressGesture(minimumDuration: 0.45) {
+                                            tagToDelete = tag
+                                            showDeleteTagDialog = true
+                                        }
+                                }
+                            }
+                        }
+                        .listRowInsets(.init(top: 4, leading: 16, bottom: 8, trailing: 16))
+                        .listRowBackground(Color.clear)
+                    }
+                }
+
                 // ── Task text ──────────────────────────────────────
                 Section("Task") {
                     TextField("What needs doing?", text: $text, axis: .vertical)
                         .lineLimit(3...6)
                 }
 
-                // ── Notes ──────────────────────────────────────────
-                Section("Notes (optional)") {
-                    TextField("Details, links, context…", text: $notes, axis: .vertical)
-                        .lineLimit(2...5)
-                        .foregroundStyle(.secondary)
-                }
 
                 // ── Priority ───────────────────────────────────────
-                Section("Priority") {
-                    Picker("Priority", selection: $priority) {
+                Section {
+                    HStack(spacing: 18) {
                         ForEach(1...5, id: \.self) { p in
-                            HStack {
-                                PriorityDot(priority: p)
-                                Text(priorityLabel(p))
+                            Button {
+                                priority = p
+                            } label: {
+                                VStack(spacing: 5) {
+                                    Circle()
+                                        .fill(priorityColor(p))
+                                        .frame(width: 20, height: 20)
+                                        .overlay {
+                                            Circle()
+                                                .stroke(priority == p ? Color.primary : .clear, lineWidth: 2)
+                                                .padding(-4)
+                                        }
+                                    Text(priorityText(p))
+                                        .font(.caption2.weight(.semibold))
+                                        .foregroundStyle(.secondary)
+                                        .frame(height: 12)
+                                }
                             }
-                            .tag(p)
+                            .buttonStyle(.plain)
                         }
                     }
-                    .pickerStyle(.inline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 2)
+                    .listRowBackground(Color.clear)
                 }
 
                 // ── Due date ───────────────────────────────────────
@@ -59,8 +101,15 @@ struct EditItemView: View {
                     }
                 }
 
+                // ── Notes ──────────────────────────────────────────
+                Section("Notes (optional)") {
+                    TextField("Details, links, context…", text: $notes, axis: .vertical)
+                        .lineLimit(2...5)
+                        .foregroundStyle(.secondary)
+                }
+
                 // ── Tags ───────────────────────────────────────────
-                Section("Tags") {
+                Section(" Create New Tag") {
                     HStack {
                         TextField("Add tag…", text: $tagInput)
                             .submitLabel(.done)
@@ -70,6 +119,7 @@ struct EditItemView: View {
                                 .buttonStyle(.borderless)
                         }
                     }
+                    .listRowBackground(Color.clear)
                     if !tags.isEmpty {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack {
@@ -92,6 +142,7 @@ struct EditItemView: View {
                             }
                         }
                         .listRowInsets(.init(top: 4, leading: 16, bottom: 8, trailing: 16))
+                        .listRowBackground(Color.clear)
                     }
                 }
                 
@@ -134,6 +185,22 @@ struct EditItemView: View {
                 }
             }
             .onAppear { populate() }
+            .confirmationDialog(
+                "Remove tag from this item?",
+                isPresented: $showDeleteTagDialog,
+                titleVisibility: .visible
+            ) {
+                Button("Remove", role: .destructive) {
+                    deleteSelectedTag()
+                }
+                Button("Cancel", role: .cancel) {
+                    tagToDelete = nil
+                }
+            } message: {
+                if let tag = tagToDelete {
+                    Text("\"\(tag)\" will be removed only from this item.")
+                }
+            }
         }
     }
 
@@ -159,14 +226,44 @@ struct EditItemView: View {
         tagInput = ""
     }
 
+    private func toggleTag(_ tag: String) {
+        if tags.contains(tag) {
+            tags.removeAll { $0 == tag }
+        } else {
+            tags.append(tag)
+        }
+    }
+
+    private func deleteSelectedTag() {
+        guard let tag = tagToDelete else { return }
+        tags.removeAll { $0 == tag }
+        tagToDelete = nil
+    }
+
     private func dueDateString() -> String? {
         guard hasDue else { return nil }
         let fmt = DateFormatter(); fmt.dateFormat = "yyyy-MM-dd"
         return fmt.string(from: dueDate)
     }
 
-    private func priorityLabel(_ p: Int) -> String {
-        ["", "Urgent", "High", "Normal", "Low", "Someday"][p]
+    private func priorityText(_ p: Int) -> String {
+        switch p {
+        case 1: return "URGENT"
+        case 3: return "NORMAL"
+        case 4: return "LOW"
+        case 5: return "EVENTUALLY"
+        default: return ""
+        }
+    }
+
+    private func priorityColor(_ p: Int) -> Color {
+        switch p {
+        case 1: return .red
+        case 2: return .orange
+        case 3: return .primary
+        case 4: return .secondary
+        default: return .gray.opacity(0.4)
+        }
     }
 
     private func save() async {

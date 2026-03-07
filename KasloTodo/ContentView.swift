@@ -11,6 +11,9 @@ struct ContentView: View {
     @State private var showDone     = false
     @State private var selectedTag: String? = nil  // Tag filter
     @State private var sortOption: SortOption = .priority  // Sort option
+    @State private var tagToDeletePermanently: String?
+    @State private var showDeleteTagDialog = false
+    @State private var isDeletingTag = false
     
     enum SortOption: String, CaseIterable {
         case priority = "Priority"
@@ -82,6 +85,22 @@ struct ContentView: View {
                 Button("OK") { store.errorMessage = nil }
             } message: {
                 Text(store.errorMessage ?? "")
+            }
+            .confirmationDialog(
+                "Delete tag permanently?",
+                isPresented: $showDeleteTagDialog,
+                titleVisibility: .visible
+            ) {
+                Button("Delete Permanently", role: .destructive) {
+                    Task { await deleteTagPermanently() }
+                }
+                Button("Cancel", role: .cancel) {
+                    tagToDeletePermanently = nil
+                }
+            } message: {
+                if let tag = tagToDeletePermanently {
+                    Text("\"\(tag)\" will be removed from all tasks.")
+                }
             }
         }
         .task { await safeRefresh() }
@@ -234,19 +253,23 @@ struct ContentView: View {
                 
                 // Tag buttons
                 ForEach(store.allTags, id: \.self) { tag in
-                    Button {
-                        withAnimation {
-                            selectedTag = (selectedTag == tag) ? nil : tag
+                    Text(tag)
+                        .font(.subheadline.weight(.semibold))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(selectedTag == tag ? Color.black : Color(uiColor: .systemGray5))
+                        .foregroundStyle(selectedTag == tag ? .white : .primary)
+                        .clipShape(Capsule())
+                        .contentShape(Capsule())
+                        .onTapGesture {
+                            withAnimation {
+                                selectedTag = (selectedTag == tag) ? nil : tag
+                            }
                         }
-                    } label: {
-                        Text(tag)
-                            .font(.subheadline.weight(.semibold))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(selectedTag == tag ? Color.black : Color(uiColor: .systemGray5))
-                            .foregroundStyle(selectedTag == tag ? .white : .primary)
-                            .clipShape(Capsule())
-                    }
+                        .onLongPressGesture(minimumDuration: 0.45) {
+                            tagToDeletePermanently = tag
+                            showDeleteTagDialog = true
+                        }
                 }
             }
             .padding(.horizontal, 4)
@@ -296,6 +319,24 @@ struct ContentView: View {
     private func safeRefresh() async {
         do { try await store.refresh() }
         catch { store.handleError(error) }
+    }
+
+    private func deleteTagPermanently() async {
+        guard let tag = tagToDeletePermanently, !isDeletingTag else { return }
+        isDeletingTag = true
+        defer {
+            isDeletingTag = false
+            tagToDeletePermanently = nil
+        }
+
+        do {
+            try await store.deleteTagPermanently(tag)
+            if selectedTag == tag {
+                selectedTag = nil
+            }
+        } catch {
+            store.handleError(error)
+        }
     }
 }
 

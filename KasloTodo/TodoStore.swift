@@ -159,6 +159,15 @@ class TodoStore: ObservableObject {
         let tags = items.flatMap { $0.tags }
         return Array(Set(tags)).sorted()
     }
+
+    /// Permanently delete a tag from all tasks.
+    func deleteTagPermanently(_ tag: String) async throws {
+        let affectedItems = items.filter { $0.tags.contains(tag) }
+        for item in affectedItems {
+            let updatedTags = item.tags.filter { $0 != tag }
+            try await update(id: item.id, patch: ["tags": AnyEncodable(updatedTags)])
+        }
+    }
     
     // MARK: Sorting Methods
     
