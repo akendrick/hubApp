@@ -54,7 +54,7 @@ struct ContentView: View {
                 }
                 
                 ToolbarItem(placement: .principal) {
-                    Text("Kaslo To Do")
+                    Text("TO DO LIST")
                         .font(.caption)
                         .fontWeight(.semibold)
                 }

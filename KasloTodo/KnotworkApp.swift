@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct KasloTodoApp: App {
+struct KnotworkApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()

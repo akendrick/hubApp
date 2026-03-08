@@ -21,7 +21,7 @@ struct OnboardingView: View {
                     VStack(spacing: 6) {
                         Image(systemName: "checkmark.rectangle.stack.fill")
                             .font(.system(size: 64))
-                        Text("Kaslo To Do")
+                        Text("TO DO LIST")
                             .font(.largeTitle.bold())
                         Text("Connect to your Kaslo dashboard")
                             .font(.subheadline)

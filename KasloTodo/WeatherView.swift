@@ -36,7 +36,7 @@ struct WeatherView: View {
                 }
                 .padding()
             }
-            .navigationTitle("Kaslo Weather")
+            .navigationTitle("Weather")
             .navigationBarTitleDisplayMode(.inline)
             .refreshable {
                 await loadWeather()

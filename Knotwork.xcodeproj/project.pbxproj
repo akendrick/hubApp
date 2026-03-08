@@ -7,18 +7,19 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A001 /* KasloTodoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F001 /* KasloTodoApp.swift */; };
+		A001 /* KnotworkApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F001 /* KnotworkApp.swift */; };
 		A002 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = F002 /* Models.swift */; };
 		A003 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F003 /* APIClient.swift */; };
 		A004 /* TodoStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F004 /* TodoStore.swift */; };
 		A005 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F005 /* ContentView.swift */; };
 		A006 /* EditItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F006 /* EditItemView.swift */; };
 		A007 /* OnboardingSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F007 /* OnboardingSettingsView.swift */; };
+		A008 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F008 /* Assets.xcassets */; };
 		EED5B60E2F592452004C98EA /* DarkroomModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = EED5B60A2F592452004C98EA /* DarkroomModels.swift */; };
 		EED5B60F2F592452004C98EA /* DarkroomStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EED5B60B2F592452004C98EA /* DarkroomStore.swift */; };
 		EED5B6102F592452004C98EA /* DarkroomAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = EED5B6092F592452004C98EA /* DarkroomAPIClient.swift */; };
 		EED5B6112F592452004C98EA /* DarkroomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EED5B60C2F592452004C98EA /* DarkroomView.swift */; };
-		EED5B6122F592452004C98EA /* KasloTodoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = EED5B60D2F592452004C98EA /* KasloTodoApp.swift */; };
+		EED5B6122F592452004C98EA /* KnotworkApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = EED5B60D2F592452004C98EA /* KnotworkApp.swift */; };
 		EEEF54642F58B2D30072AE88 /* WeatherModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEF54632F58B2D30072AE88 /* WeatherModels.swift */; };
 		EEEF54662F58B3020072AE88 /* WeatherView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEF54652F58B3020072AE88 /* WeatherView.swift */; };
 		EEEF54682F58B4F60072AE88 /* WeatherSplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEF54672F58B4F50072AE88 /* WeatherSplashView.swift */; };
@@ -29,17 +30,18 @@
 		EED5B60A2F592452004C98EA /* DarkroomModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DarkroomModels.swift; sourceTree = "<group>"; };
 		EED5B60B2F592452004C98EA /* DarkroomStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DarkroomStore.swift; sourceTree = "<group>"; };
 		EED5B60C2F592452004C98EA /* DarkroomView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DarkroomView.swift; sourceTree = "<group>"; };
-		EED5B60D2F592452004C98EA /* KasloTodoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KasloTodoApp.swift; sourceTree = "<group>"; };
+		EED5B60D2F592452004C98EA /* KnotworkApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnotworkApp.swift; sourceTree = "<group>"; };
 		EEEF54632F58B2D30072AE88 /* WeatherModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherModels.swift; sourceTree = "<group>"; };
 		EEEF54652F58B3020072AE88 /* WeatherView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherView.swift; sourceTree = "<group>"; };
 		EEEF54672F58B4F50072AE88 /* WeatherSplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherSplashView.swift; sourceTree = "<group>"; };
-		F001 /* KasloTodoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KasloTodoApp.swift; sourceTree = "<group>"; };
+		F001 /* KnotworkApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnotworkApp.swift; sourceTree = "<group>"; };
 		F002 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		F003 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		F004 /* TodoStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoStore.swift; sourceTree = "<group>"; };
 		F005 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		F006 /* EditItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditItemView.swift; sourceTree = "<group>"; };
 		F007 /* OnboardingSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingSettingsView.swift; sourceTree = "<group>"; };
+		F008 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		PROD /* KasloTodo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KasloTodo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -67,14 +69,15 @@
 				EED5B60A2F592452004C98EA /* DarkroomModels.swift */,
 				EED5B60B2F592452004C98EA /* DarkroomStore.swift */,
 				EED5B60C2F592452004C98EA /* DarkroomView.swift */,
-				EED5B60D2F592452004C98EA /* KasloTodoApp.swift */,
-				F001 /* KasloTodoApp.swift */,
+				EED5B60D2F592452004C98EA /* KnotworkApp.swift */,
+				F001 /* KnotworkApp.swift */,
 				F002 /* Models.swift */,
 				F003 /* APIClient.swift */,
 				F004 /* TodoStore.swift */,
 				F005 /* ContentView.swift */,
 				F006 /* EditItemView.swift */,
 				F007 /* OnboardingSettingsView.swift */,
+				F008 /* Assets.xcassets */,
 				EEEF54632F58B2D30072AE88 /* WeatherModels.swift */,
 				EEEF54652F58B3020072AE88 /* WeatherView.swift */,
 				EEEF54672F58B4F50072AE88 /* WeatherSplashView.swift */,
@@ -90,6 +93,7 @@
 			buildConfigurationList = BUILDCFGLIST /* Build configuration list for PBXNativeTarget "KasloTodo" */;
 			buildPhases = (
 				SRCPHASE /* Sources */,
+				RESPHASE /* Resources */,
 			);
 			buildRules = (
 			);
@@ -133,12 +137,23 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		RESPHASE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A008 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		SRCPHASE /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A001 /* KasloTodoApp.swift in Sources */,
+				A001 /* KnotworkApp.swift in Sources */,
 				A002 /* Models.swift in Sources */,
 				EEEF54642F58B2D30072AE88 /* WeatherModels.swift in Sources */,
 				A003 /* APIClient.swift in Sources */,
@@ -148,7 +163,7 @@
 				EED5B60F2F592452004C98EA /* DarkroomStore.swift in Sources */,
 				EED5B6102F592452004C98EA /* DarkroomAPIClient.swift in Sources */,
 				EED5B6112F592452004C98EA /* DarkroomView.swift in Sources */,
-				EED5B6122F592452004C98EA /* KasloTodoApp.swift in Sources */,
+				EED5B6122F592452004C98EA /* KnotworkApp.swift in Sources */,
 				A005 /* ContentView.swift in Sources */,
 				EEEF54662F58B3020072AE88 /* WeatherView.swift in Sources */,
 				A006 /* EditItemView.swift in Sources */,
