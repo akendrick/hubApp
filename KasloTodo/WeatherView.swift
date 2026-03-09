@@ -115,19 +115,19 @@ struct WeatherView: View {
 
                 if let indoorTemp = obs.indoorTemp {
                     Text("\(Int(indoorTemp.rounded()))°C")
-                        .font(.title2.weight(.semibold))
+                        .font(.system(size: 29, weight: .semibold))
                 } else {
                     Text("--")
-                        .font(.title2.weight(.semibold))
+                        .font(.system(size: 29, weight: .semibold))
                 }
 
                 if let indoorHumidity = obs.indoorHumidity {
                     Label("\(indoorHumidity)%", systemImage: "humidity.fill")
-                        .font(.subheadline)
+                        .font(.system(size: 20, weight: .regular))
                         .foregroundStyle(.secondary)
                 } else {
                     Label("--", systemImage: "humidity.fill")
-                        .font(.subheadline)
+                        .font(.system(size: 20, weight: .regular))
                         .foregroundStyle(.secondary)
                 }
             }
