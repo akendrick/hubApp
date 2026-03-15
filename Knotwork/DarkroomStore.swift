@@ -76,13 +76,36 @@ class DarkroomStore: ObservableObject {
         do { chemistry = try await fetch("chemistry") }
         catch { present(error) }
     }
-
     func loadNegatives() async {
-        do { negatives = try await fetch("negative") }
-        catch { present(error) }
-    }
+            do { negatives = try await fetch("negative") }
+            catch { present(error) }
+        }
 
-    // MARK: - Chemistry CRUD
+        func loadPapers() async {
+            do { papers = try await fetch("paper") }
+            catch { present(error) }
+        }
+
+        // MARK: - Paper CRUD
+
+        func addPaper(_ req: DRPaperRequest) async throws {
+            _ = try await DarkroomAPIClient.create(serverURL: serverURL, apiKey: apiKey, res: "paper", body: req)
+            await loadPapers()
+        }
+        
+        func updatePaper(id: Int, _ req: DRPaperRequest) async throws {
+            try await DarkroomAPIClient.update(serverURL: serverURL, apiKey: apiKey, res: "paper", id: id, body: req)
+            await loadPapers()
+        }
+        
+        func deletePaper(id: Int) async {
+            do {
+                try await DarkroomAPIClient.delete(serverURL: serverURL, apiKey: apiKey, res: "paper", id: id)
+                papers.removeAll { $0.id == id }
+            } catch { present(error) }
+        }
+
+// MARK: - Chemistry CRUD
 
     func addChemistry(_ req: DRChemistryRequest) async throws {
         _ = try await DarkroomAPIClient.create(serverURL: serverURL, apiKey: apiKey, res: "chemistry", body: req)

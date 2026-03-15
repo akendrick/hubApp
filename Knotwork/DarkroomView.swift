@@ -1195,74 +1195,166 @@ struct DRNegativeForm: View {
 
 // MARK: - Options Tab
 
+// MARK: - Options Tab
+
 struct DROptionsTab: View {
     @ObservedObject var store: DarkroomStore
+    @State private var showPaperForm = false
     @State private var showPhotoTypeForm = false
     @State private var showChemTypeForm = false
     @State private var showNegTypeForm = false
+    @State private var paperTarget: DRPaper?
     @State private var photoTypeTarget: DRPhotoType?
     @State private var chemTypeTarget: DRLookup?
     @State private var negTypeTarget: DRLookup?
+    @State private var expandedSections: Set<String> = []
 
     var body: some View {
         List {
-            Section("Process Types") {
-                ForEach(store.photoTypes) { pt in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(pt.name).font(.subheadline)
-                        HStack(spacing: 8) {
-                            Text(pt.isCarbonDev ? "Carbon dev" : "Simple dev").font(.caption2).foregroundStyle(.secondary)
-                            if pt.showLayers { Text("Layers").font(.caption2).foregroundStyle(.blue) }
+            // Paper Section
+            Section {
+                DisclosureGroup(
+                    isExpanded: Binding(
+                        get: { expandedSections.contains("paper") },
+                        set: { isExpanded in
+                            if isExpanded { expandedSections.insert("paper") }
+                            else { expandedSections.remove("paper") }
                         }
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture { photoTypeTarget = pt }
-                    .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) { Task { await store.deletePhotoType(id: pt.id) } }
-                        label: { Label("Delete", systemImage: "trash") }
-                    }
-                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                        Button { photoTypeTarget = pt } label: { Label("Edit", systemImage: "pencil") }
-                            .tint(.blue)
-                    }
-                }
-                Button { showPhotoTypeForm = true } label: { Label("Add Process Type", systemImage: "plus") }
-            }
-            Section("Chemistry Types") {
-                ForEach(store.chemistryTypes) { t in
-                    Text(t.name)
+                    )
+                ) {
+                    ForEach(store.papers) { paper in
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(paper.displayName).font(.subheadline)
+                            HStack(spacing: 8) {
+                                if let w = paper.weight {
+                                    Text(String(format: "%.0f gsm", w)).font(.caption2).foregroundStyle(.secondary)
+                                }
+                                if paper.hotPress == 1 {
+                                    Text("HP").font(.caption2.weight(.semibold)).foregroundStyle(.blue)
+                                }
+                            }
+                        }
                         .contentShape(Rectangle())
-                        .onTapGesture { chemTypeTarget = t }
+                        .onTapGesture { paperTarget = paper }
                         .swipeActions(edge: .trailing) {
-                            Button(role: .destructive) { Task { await deleteType("chemistry_types", id: t.id) } }
+                            Button(role: .destructive) { Task { await store.deletePaper(id: paper.id) } }
                             label: { Label("Delete", systemImage: "trash") }
                         }
                         .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                            Button { chemTypeTarget = t } label: { Label("Edit", systemImage: "pencil") }
+                            Button { paperTarget = paper } label: { Label("Edit", systemImage: "pencil") }
                                 .tint(.blue)
                         }
+                    }
+                    Button { showPaperForm = true } label: { Label("Add Paper", systemImage: "plus") }
+                } label: {
+                    Text("Paper").font(.headline)
                 }
-                Button { showChemTypeForm = true } label: { Label("Add Chemistry Type", systemImage: "plus") }
             }
-            Section("Negative Types") {
-                ForEach(store.negativeTypes) { t in
-                    Text(t.name)
+            
+            // Process Types Section
+            Section {
+                DisclosureGroup(
+                    isExpanded: Binding(
+                        get: { expandedSections.contains("processTypes") },
+                        set: { isExpanded in
+                            if isExpanded { expandedSections.insert("processTypes") }
+                            else { expandedSections.remove("processTypes") }
+                        }
+                    )
+                ) {
+                    ForEach(store.photoTypes) { pt in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(pt.name).font(.subheadline)
+                            HStack(spacing: 8) {
+                                Text(pt.isCarbonDev ? "Carbon dev" : "Simple dev").font(.caption2).foregroundStyle(.secondary)
+                                if pt.showLayers { Text("Layers").font(.caption2).foregroundStyle(.blue) }
+                            }
+                        }
                         .contentShape(Rectangle())
-                        .onTapGesture { negTypeTarget = t }
+                        .onTapGesture { photoTypeTarget = pt }
                         .swipeActions(edge: .trailing) {
-                            Button(role: .destructive) { Task { await deleteType("negative_types", id: t.id) } }
+                            Button(role: .destructive) { Task { await store.deletePhotoType(id: pt.id) } }
                             label: { Label("Delete", systemImage: "trash") }
                         }
                         .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                            Button { negTypeTarget = t } label: { Label("Edit", systemImage: "pencil") }
+                            Button { photoTypeTarget = pt } label: { Label("Edit", systemImage: "pencil") }
                                 .tint(.blue)
                         }
+                    }
+                    Button { showPhotoTypeForm = true } label: { Label("Add Process Type", systemImage: "plus") }
+                } label: {
+                    Text("Process Types").font(.headline)
                 }
-                Button { showNegTypeForm = true } label: { Label("Add Negative Type", systemImage: "plus") }
+            }
+            
+            // Chemistry Types Section
+            Section {
+                DisclosureGroup(
+                    isExpanded: Binding(
+                        get: { expandedSections.contains("chemistryTypes") },
+                        set: { isExpanded in
+                            if isExpanded { expandedSections.insert("chemistryTypes") }
+                            else { expandedSections.remove("chemistryTypes") }
+                        }
+                    )
+                ) {
+                    ForEach(store.chemistryTypes) { t in
+                        Text(t.name)
+                            .contentShape(Rectangle())
+                            .onTapGesture { chemTypeTarget = t }
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) { Task { await deleteType("chemistry_types", id: t.id) } }
+                                label: { Label("Delete", systemImage: "trash") }
+                            }
+                            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                Button { chemTypeTarget = t } label: { Label("Edit", systemImage: "pencil") }
+                                    .tint(.blue)
+                            }
+                    }
+                    Button { showChemTypeForm = true } label: { Label("Add Chemistry Type", systemImage: "plus") }
+                } label: {
+                    Text("Chemistry Types").font(.headline)
+                }
+            }
+            
+            // Negative Types Section
+            Section {
+                DisclosureGroup(
+                    isExpanded: Binding(
+                        get: { expandedSections.contains("negativeTypes") },
+                        set: { isExpanded in
+                            if isExpanded { expandedSections.insert("negativeTypes") }
+                            else { expandedSections.remove("negativeTypes") }
+                        }
+                    )
+                ) {
+                    ForEach(store.negativeTypes) { t in
+                        Text(t.name)
+                            .contentShape(Rectangle())
+                            .onTapGesture { negTypeTarget = t }
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) { Task { await deleteType("negative_types", id: t.id) } }
+                                label: { Label("Delete", systemImage: "trash") }
+                            }
+                            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                Button { negTypeTarget = t } label: { Label("Edit", systemImage: "pencil") }
+                                    .tint(.blue)
+                            }
+                    }
+                    Button { showNegTypeForm = true } label: { Label("Add Negative Type", systemImage: "plus") }
+                } label: {
+                    Text("Negative Types").font(.headline)
+                }
             }
         }
         .listStyle(.insetGrouped)
-        .task { await store.loadTypes() }
+        .task {
+            await store.loadTypes()
+            await store.loadPapers()
+        }
+        .sheet(isPresented: $showPaperForm) {
+            DRPaperForm(store: store, target: nil) { showPaperForm = false }
+        }
         .sheet(isPresented: $showPhotoTypeForm) {
             DRPhotoTypeForm(store: store, target: nil) { showPhotoTypeForm = false }
         }
@@ -1271,6 +1363,9 @@ struct DROptionsTab: View {
         }
         .sheet(isPresented: $showNegTypeForm) {
             DRLookupTypeForm(store: store, resource: "negative_types", title: "Negative Type", target: nil) { showNegTypeForm = false }
+        }
+        .sheet(item: $paperTarget, onDismiss: { paperTarget = nil }) { target in
+            DRPaperForm(store: store, target: target) { paperTarget = nil }
         }
         .sheet(item: $photoTypeTarget, onDismiss: { photoTypeTarget = nil }) { target in
             DRPhotoTypeForm(store: store, target: target) { photoTypeTarget = nil }
@@ -1399,6 +1494,90 @@ struct DRLookupTypeForm: View {
                 _ = try await DarkroomAPIClient.create(serverURL: store.serverURL, apiKey: store.apiKey, res: resource, body: request)
             }
             await store.loadTypes()
+            onDone()
+        } catch {
+            self.error = error.localizedDescription
+        }
+        saving = false
+    }
+}
+
+// MARK: - Paper Form
+
+struct DRPaperForm: View {
+    @ObservedObject var store: DarkroomStore
+    let target: DRPaper?
+    let onDone: () -> Void
+
+    @State private var manufacturer = ""
+    @State private var label = ""
+    @State private var weight = ""
+    @State private var hotPress = false
+    @State private var notes = ""
+    @State private var saving = false
+    @State private var error: String?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Identity") {
+                    TextField("Manufacturer", text: $manufacturer, prompt: Text("e.g. Arches, Fabriano"))
+                    TextField("Label / Name", text: $label, prompt: Text("e.g. Platine, BFK Rives"))
+                }
+                Section("Properties") {
+                    HStack {
+                        TextField("Weight", text: $weight)
+                            .keyboardType(.decimalPad)
+                        Text("gsm").font(.caption).foregroundStyle(.secondary)
+                    }
+                    Toggle("Hot Press", isOn: $hotPress)
+                }
+                Section("Notes") {
+                    TextField("Notes…", text: $notes, axis: .vertical)
+                        .lineLimit(3...5)
+                }
+                if let error {
+                    Section { Text(error).foregroundStyle(.red).font(.caption) }
+                }
+            }
+            .navigationTitle(target == nil ? "New Paper" : "Edit Paper")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { onDone() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(target == nil ? "Add" : "Save") { Task { await save() } }
+                        .disabled(saving || (manufacturer.isEmpty && label.isEmpty))
+                }
+            }
+        }
+        .onAppear { populate() }
+    }
+
+    private func populate() {
+        guard let target else { return }
+        manufacturer = target.manufacturer ?? ""
+        label = target.label ?? ""
+        weight = target.weight.map { String(format: "%.0f", $0) } ?? ""
+        hotPress = target.hotPress == 1
+        notes = target.notes ?? ""
+    }
+
+    private func save() async {
+        saving = true
+        error = nil
+        let request = DRPaperRequest(
+            manufacturer: manufacturer.isEmpty ? nil : manufacturer,
+            label: label.isEmpty ? nil : label,
+            weight: Double(weight),
+            hotPress: hotPress,
+            notes: notes.isEmpty ? nil : notes
+        )
+        do {
+            if let target {
+                try await store.updatePaper(id: target.id, request)
+            } else {
+                try await store.addPaper(request)
+            }
             onDone()
         } catch {
             self.error = error.localizedDescription
