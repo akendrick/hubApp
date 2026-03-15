@@ -102,8 +102,11 @@ enum DarkroomAPIClient {
         let (data, resp): (Data, URLResponse)
         do {
             (data, resp) = try await URLSession.shared.data(for: req)
+        } catch is CancellationError {
+            throw CancellationError()
         } catch let e as URLError {
             switch e.code {
+            case .cancelled: throw CancellationError()
             case .notConnectedToInternet, .networkConnectionLost: throw APIError.networkError("No internet")
             case .timedOut: throw APIError.networkError("Request timed out")
             case .cannotFindHost, .cannotConnectToHost: throw APIError.networkError("Cannot reach server")

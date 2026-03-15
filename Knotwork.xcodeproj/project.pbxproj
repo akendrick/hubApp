@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A001 /* KnotworkApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F001 /* KnotworkApp.swift */; };
 		A002 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = F002 /* Models.swift */; };
 		A003 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F003 /* APIClient.swift */; };
 		A004 /* TodoStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F004 /* TodoStore.swift */; };
@@ -34,14 +33,13 @@
 		EEEF54632F58B2D30072AE88 /* WeatherModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherModels.swift; sourceTree = "<group>"; };
 		EEEF54652F58B3020072AE88 /* WeatherView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherView.swift; sourceTree = "<group>"; };
 		EEEF54672F58B4F50072AE88 /* WeatherSplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherSplashView.swift; sourceTree = "<group>"; };
-		F001 /* KnotworkApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnotworkApp.swift; sourceTree = "<group>"; };
 		F002 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		F003 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		F004 /* TodoStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodoStore.swift; sourceTree = "<group>"; };
 		F005 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		F006 /* EditItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditItemView.swift; sourceTree = "<group>"; };
 		F007 /* OnboardingSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingSettingsView.swift; sourceTree = "<group>"; };
-		F008 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		F008 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = KasloTodo/Assets.xcassets; sourceTree = "<group>"; };
 		PROD /* KasloTodo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KasloTodo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -70,7 +68,6 @@
 				EED5B60B2F592452004C98EA /* DarkroomStore.swift */,
 				EED5B60C2F592452004C98EA /* DarkroomView.swift */,
 				EED5B60D2F592452004C98EA /* KnotworkApp.swift */,
-				F001 /* KnotworkApp.swift */,
 				F002 /* Models.swift */,
 				F003 /* APIClient.swift */,
 				F004 /* TodoStore.swift */,
@@ -82,7 +79,7 @@
 				EEEF54652F58B3020072AE88 /* WeatherView.swift */,
 				EEEF54672F58B4F50072AE88 /* WeatherSplashView.swift */,
 			);
-			path = KasloTodo;
+			path = Knotwork;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -119,7 +116,7 @@
 					};
 				};
 			};
-			buildConfigurationList = PROJCFGLIST /* Build configuration list for PBXProject "KasloTodo" */;
+			buildConfigurationList = PROJCFGLIST /* Build configuration list for PBXProject "Knotwork" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -153,7 +150,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A001 /* KnotworkApp.swift in Sources */,
 				A002 /* Models.swift in Sources */,
 				EEEF54642F58B2D30072AE88 /* WeatherModels.swift in Sources */,
 				A003 /* APIClient.swift in Sources */,
@@ -258,6 +254,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CLANG_ENABLE_OBJC_WEAK = YES;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
@@ -266,7 +263,7 @@
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = ABKCFJF5QD;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = ToDo;
+				INFOPLIST_KEY_CFBundleDisplayName = Knotwork;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -281,7 +278,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = ca.knotwork.KasloTodo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -293,6 +290,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CLANG_ENABLE_OBJC_WEAK = YES;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
@@ -301,7 +299,7 @@
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = ABKCFJF5QD;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = ToDo;
+				INFOPLIST_KEY_CFBundleDisplayName = Knotwork;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -316,7 +314,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = ca.knotwork.KasloTodo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -336,7 +334,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		PROJCFGLIST /* Build configuration list for PBXProject "KasloTodo" */ = {
+		PROJCFGLIST /* Build configuration list for PBXProject "Knotwork" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				DBGCFG /* Debug */,
