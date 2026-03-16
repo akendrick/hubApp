@@ -29,29 +29,84 @@ class DarkroomStore: ObservableObject {
         errorMessage = error.localizedDescription
     }
 
+    private func loadResource<T: Decodable>(_ res: String, assign: (T) -> Void) async -> String? {
+        do {
+            let value: T = try await fetch(res)
+            assign(value)
+            return nil
+        } catch {
+            return "\(res): \(error.localizedDescription)"
+        }
+    }
+
+    private func presentPartialFailures(_ failures: [String]) {
+        guard !failures.isEmpty else { return }
+        errorMessage = "Some Darkroom data did not load.\n" + failures.joined(separator: "\n")
+    }
+
     // MARK: - Bootstrap
 
     func loadTypes() async {
-        do {
-            async let pt: [DRPhotoType] = fetch("photo_types")
-            async let ct: [DRLookup]   = fetch("chemistry_types")
-            async let nt: [DRLookup]   = fetch("negative_types")
-            (photoTypes, chemistryTypes, negativeTypes) = try await (pt, ct, nt)
-        } catch { present(error) }
+        errorMessage = nil
+        var failures: [String] = []
+
+        if let failure: String = await loadResource("photo_types", assign: { (value: [DRPhotoType]) in
+            photoTypes = value
+        }) {
+            failures.append(failure)
+        }
+        if let failure: String = await loadResource("chemistry_types", assign: { (value: [DRLookup]) in
+            chemistryTypes = value
+        }) {
+            failures.append(failure)
+        }
+        if let failure: String = await loadResource("negative_types", assign: { (value: [DRLookup]) in
+            negativeTypes = value
+        }) {
+            failures.append(failure)
+        }
+
+        presentPartialFailures(failures)
     }
 
     // Load everything needed to render the photo form
     func loadAllForPhotoForm() async {
         isLoading = true; defer { isLoading = false }
-        do {
-            async let pt: [DRPhotoType]    = fetch("photo_types")
-            async let sp: [DRSupportPaper] = fetch("support_paper")
-            async let ct: [DRCarbonTissue] = fetch("carbon_tissue")
-            async let neg: [DRNegative]    = fetch("negative")
-            async let c:   [DRChemistry]   = fetch("chemistry")
-            async let p:   [DRPaper]       = fetch("paper")
-            (photoTypes, supportPapers, carbonTissues, negatives, chemistry, papers) = try await (pt, sp, ct, neg, c, p)
-        } catch { present(error) }
+        errorMessage = nil
+        var failures: [String] = []
+
+        if let failure: String = await loadResource("photo_types", assign: { (value: [DRPhotoType]) in
+            photoTypes = value
+        }) {
+            failures.append(failure)
+        }
+        if let failure: String = await loadResource("support_paper", assign: { (value: [DRSupportPaper]) in
+            supportPapers = value
+        }) {
+            failures.append(failure)
+        }
+        if let failure: String = await loadResource("carbon_tissue", assign: { (value: [DRCarbonTissue]) in
+            carbonTissues = value
+        }) {
+            failures.append(failure)
+        }
+        if let failure: String = await loadResource("negative", assign: { (value: [DRNegative]) in
+            negatives = value
+        }) {
+            failures.append(failure)
+        }
+        if let failure: String = await loadResource("chemistry", assign: { (value: [DRChemistry]) in
+            chemistry = value
+        }) {
+            failures.append(failure)
+        }
+        if let failure: String = await loadResource("paper", assign: { (value: [DRPaper]) in
+            papers = value
+        }) {
+            failures.append(failure)
+        }
+
+        presentPartialFailures(failures)
     }
 
     // MARK: - Tab loaders

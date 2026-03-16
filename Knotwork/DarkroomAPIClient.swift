@@ -1,6 +1,8 @@
 import Foundation
 
 enum DarkroomAPIClient {
+    private static let requestTimeout: TimeInterval = 60
+    private static let retryableAttempts = 2
 
     static func makeDecoder() -> JSONDecoder {
         let d = JSONDecoder(); d.keyDecodingStrategy = .convertFromSnakeCase; return d
@@ -67,13 +69,13 @@ enum DarkroomAPIClient {
         body.append(imageData)
         body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
 
-        var req = URLRequest(url: url, timeoutInterval: 60)
+        var req = URLRequest(url: url, timeoutInterval: requestTimeout)
         req.httpMethod = "POST"
         req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         req.httpBody = body
 
-        let (data, _) = try await URLSession.shared.data(for: req)
+        let (data, _) = try await data(for: req)
 
         struct ImageResult: Decodable { var imagePath: String }
         let env = try makeDecoder().decode(Envelope<ImageResult>.self, from: data)
@@ -94,27 +96,55 @@ enum DarkroomAPIClient {
     }
 
     static func perform(url: URL, method: String, body: Data?, apiKey: String) async throws -> Data {
-        var req = URLRequest(url: url, timeoutInterval: 30)
+        var req = URLRequest(url: url, timeoutInterval: requestTimeout)
         req.httpMethod = method
         req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Accept")
         if let body { req.httpBody = body; req.setValue("application/json", forHTTPHeaderField: "Content-Type") }
-        let (data, resp): (Data, URLResponse)
-        do {
-            (data, resp) = try await URLSession.shared.data(for: req)
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch let e as URLError {
-            switch e.code {
-            case .cancelled: throw CancellationError()
-            case .notConnectedToInternet, .networkConnectionLost: throw APIError.networkError("No internet")
-            case .timedOut: throw APIError.networkError("Request timed out")
-            case .cannotFindHost, .cannotConnectToHost: throw APIError.networkError("Cannot reach server")
-            default: throw APIError.networkError(e.localizedDescription)
-            }
-        }
+        let (data, resp) = try await data(for: req)
         guard let http = resp as? HTTPURLResponse else { throw APIError.networkError("No HTTP response") }
         if http.statusCode == 401 { throw APIError.unauthorized }
         return data
+    }
+
+    private static func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        var lastError: URLError?
+
+        for attempt in 1...retryableAttempts {
+            do {
+                return try await URLSession.shared.data(for: request)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch let error as URLError {
+                if error.code == .cancelled { throw CancellationError() }
+                lastError = error
+
+                if error.code == .timedOut && attempt < retryableAttempts {
+                    try? await Task.sleep(for: .seconds(Double(attempt)))
+                    continue
+                }
+                throw map(error)
+            } catch {
+                throw APIError.networkError(error.localizedDescription)
+            }
+        }
+
+        if let lastError {
+            throw map(lastError)
+        }
+        throw APIError.networkError("Request failed")
+    }
+
+    private static func map(_ error: URLError) -> APIError {
+        switch error.code {
+        case .notConnectedToInternet, .networkConnectionLost:
+            return .networkError("No internet")
+        case .timedOut:
+            return .networkError("Request timed out")
+        case .cannotFindHost, .cannotConnectToHost:
+            return .networkError("Cannot reach server")
+        default:
+            return .networkError(error.localizedDescription)
+        }
     }
 }

@@ -78,6 +78,7 @@ struct DRPhotosTab: View {
     @State private var showForm = false
     @State private var editTarget: DRPhoto?
     @State private var detailPhoto: DRPhoto?
+    @State private var duplicatingPhoto: DRPhoto?
     let columns = [GridItem(.adaptive(minimum: 160), spacing: 12)]
 
     var body: some View {
@@ -88,7 +89,9 @@ struct DRPhotosTab: View {
                 ScrollView {
                     LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(store.photos) { photo in
-                            DRPhotoCard(photo: photo).onTapGesture { detailPhoto = photo }
+                            DRPhotoCard(photo: photo)
+                                .onTapGesture { detailPhoto = photo }
+                                .onLongPressGesture { duplicatingPhoto = photo }
                         }
                     }
                     .padding()
@@ -105,7 +108,69 @@ struct DRPhotosTab: View {
         .sheet(item: $detailPhoto) { photo in
             DRPhotoDetail(store: store, photo: photo) { p in editTarget = p; detailPhoto = nil; showForm = true }
         }
+        .alert("Duplicate Photo?", isPresented: Binding(get: { duplicatingPhoto != nil }, set: { if !$0 { duplicatingPhoto = nil } })) {
+            Button("Cancel", role: .cancel) { duplicatingPhoto = nil }
+            Button("Duplicate") {
+                if let photo = duplicatingPhoto {
+                    Task { await duplicatePhoto(photo) }
+                }
+            }
+        } message: {
+            if let photo = duplicatingPhoto {
+                Text("Create a copy of '\(photo.title ?? "Photo #\(photo.id)")'?")
+            }
+        }
         .task { await store.loadAllForPhotoForm(); await store.loadPhotos() }
+    }
+
+    private func duplicatePhoto(_ photo: DRPhoto) async {
+        let request = DRPhotoRequest(
+            title: photo.title.map { "\($0) (Copy)" },
+            photoTypeId: photo.photoTypeId,
+            paperId: photo.paperId,
+            photoSize: photo.photoSize,
+            dateSensitized: photo.dateSensitized,
+            dateExposed: photo.dateExposed,
+            testStrip: photo.testStrip == 1,
+            exposureDuration: photo.exposureDuration,
+            times: photo.times.compactMap { time in
+                guard let duration = time.durationMinutes, duration > 0 else { return nil }
+                return DRTimeRequest(durationMinutes: duration)
+            },
+            paperSoakTime: photo.paperSoakTime,
+            paperSoakTemp: photo.paperSoakTemp,
+            hotDevelopTime: photo.hotDevelopTime,
+            hotDevelopTemp: photo.hotDevelopTemp,
+            coolDevelopTime: photo.coolDevelopTime,
+            coolDevelopTemp: photo.coolDevelopTemp,
+            developTime: photo.developTime,
+            developTemp: photo.developTemp,
+            developNotes: photo.developNotes,
+            notes: photo.notes,
+            layers: photo.layers.map {
+                DRLayerRequest(
+                    supportPaperId: $0.supportPaperId,
+                    negativeId: $0.negativeId,
+                    carbonTissueId: $0.carbonTissueId
+                )
+            },
+            finishing: photo.finishing.map {
+                DRFinishingRequest(
+                    label: $0.label,
+                    chemistryId: $0.chemistryId,
+                    stepTime: $0.stepTime,
+                    stepTemp: $0.stepTemp,
+                    notes: $0.notes
+                )
+            }
+        )
+        do {
+            _ = try await store.addPhoto(request)
+            await store.loadPhotos()
+            duplicatingPhoto = nil
+        } catch {
+            store.errorMessage = error.localizedDescription
+        }
     }
 }
 
@@ -641,6 +706,9 @@ struct DRLayersTab: View {
     @State private var supportPaperTarget: DRSupportPaper?
     @State private var carbonTissueTarget: DRCarbonTissue?
     @State private var negativeTarget: DRNegative?
+    @State private var duplicatingSupportPaper: DRSupportPaper?
+    @State private var duplicatingCarbonTissue: DRCarbonTissue?
+    @State private var duplicatingNegative: DRNegative?
 
     var body: some View {
         List {
@@ -662,6 +730,7 @@ struct DRLayersTab: View {
                         }
                         .contentShape(Rectangle())
                         .onTapGesture { carbonTissueTarget = ct }
+                        .onLongPressGesture { duplicatingCarbonTissue = ct }
                         .swipeActions(edge: .trailing) {
                             Button(role: .destructive) { Task { await store.deleteCarbonTissue(id: ct.id) } }
                             label: { Label("Delete", systemImage: "trash") }
@@ -692,6 +761,7 @@ struct DRLayersTab: View {
                         }
                         .contentShape(Rectangle())
                         .onTapGesture { negativeTarget = negative }
+                        .onLongPressGesture { duplicatingNegative = negative }
                         .swipeActions(edge: .trailing) {
                             Button(role: .destructive) { Task { await store.deleteNegative(id: negative.id) } }
                             label: { Label("Delete", systemImage: "trash") }
@@ -721,6 +791,7 @@ struct DRLayersTab: View {
                         }
                         .contentShape(Rectangle())
                         .onTapGesture { supportPaperTarget = sp }
+                        .onLongPressGesture { duplicatingSupportPaper = sp }
                         .swipeActions(edge: .trailing) {
                             Button(role: .destructive) { Task { await store.deleteSupportPaper(id: sp.id) } }
                             label: { Label("Delete", systemImage: "trash") }
@@ -761,8 +832,91 @@ struct DRLayersTab: View {
         .sheet(item: $supportPaperTarget, onDismiss: { supportPaperTarget = nil }) { target in
             DRSupportPaperForm(store: store, target: target) { supportPaperTarget = nil }
         }
+        .alert("Duplicate Carbon Tissue?", isPresented: Binding(get: { duplicatingCarbonTissue != nil }, set: { if !$0 { duplicatingCarbonTissue = nil } })) {
+            Button("Cancel", role: .cancel) { duplicatingCarbonTissue = nil }
+            Button("Duplicate") {
+                if let tissue = duplicatingCarbonTissue {
+                    Task { await duplicateCarbonTissue(tissue) }
+                }
+            }
+        } message: {
+            if let tissue = duplicatingCarbonTissue {
+                Text("Create a copy of '\(tissue.menuLabel)'?")
+            }
+        }
+        .alert("Duplicate Negative?", isPresented: Binding(get: { duplicatingNegative != nil }, set: { if !$0 { duplicatingNegative = nil } })) {
+            Button("Cancel", role: .cancel) { duplicatingNegative = nil }
+            Button("Duplicate") {
+                if let negative = duplicatingNegative {
+                    Task { await duplicateNegative(negative) }
+                }
+            }
+        } message: {
+            if let negative = duplicatingNegative {
+                Text("Create a copy of '\(negative.menuLabel)'?")
+            }
+        }
+        .alert("Duplicate Support Paper?", isPresented: Binding(get: { duplicatingSupportPaper != nil }, set: { if !$0 { duplicatingSupportPaper = nil } })) {
+            Button("Cancel", role: .cancel) { duplicatingSupportPaper = nil }
+            Button("Duplicate") {
+                if let paper = duplicatingSupportPaper {
+                    Task { await duplicateSupportPaper(paper) }
+                }
+            }
+        } message: {
+            if let paper = duplicatingSupportPaper {
+                Text("Create a copy of '\(paper.displayName)'?")
+            }
+        }
         .task { await store.loadAllForPhotoForm() }
         .refreshable { await store.loadAllForPhotoForm() }
+    }
+
+    private func duplicateSupportPaper(_ paper: DRSupportPaper) async {
+        let request = DRSupportPaperRequest(
+            paperId: paper.paperId,
+            mark: paper.mark + "C",
+            treatmentChemistryId: paper.treatmentChemistryId,
+            notes: paper.notes
+        )
+        do {
+            try await store.addSupportPaper(request)
+            duplicatingSupportPaper = nil
+        } catch {
+            store.errorMessage = error.localizedDescription
+        }
+    }
+
+    private func duplicateCarbonTissue(_ tissue: DRCarbonTissue) async {
+        let request = DRCarbonTissueRequest(
+            titleId: tissue.titleId.map { "\($0) (Copy)" },
+            size: tissue.size,
+            chemistryId: tissue.chemistryId,
+            amountPoured: tissue.amountPoured,
+            datePoured: tissue.datePoured,
+            notes: tissue.notes
+        )
+        do {
+            try await store.addCarbonTissue(request)
+            duplicatingCarbonTissue = nil
+        } catch {
+            store.errorMessage = error.localizedDescription
+        }
+    }
+
+    private func duplicateNegative(_ negative: DRNegative) async {
+        let request = DRNegativeRequest(
+            titleId: negative.titleId.map { "\($0) (Copy)" },
+            dateCreated: negative.dateCreated,
+            typeId: negative.typeId,
+            settingsNotes: negative.settingsNotes
+        )
+        do {
+            try await store.addNegative(request)
+            duplicatingNegative = nil
+        } catch {
+            store.errorMessage = error.localizedDescription
+        }
     }
 }
 
@@ -787,6 +941,7 @@ struct DRChemistryTab: View {
     @ObservedObject var store: DarkroomStore
     @State private var showForm = false
     @State private var editTarget: DRChemistry?
+    @State private var duplicatingChemistry: DRChemistry?
 
     var body: some View {
         List {
@@ -825,6 +980,9 @@ struct DRChemistryTab: View {
                     editTarget = chemistry
                     showForm = true
                 }
+                .onLongPressGesture {
+                    duplicatingChemistry = chemistry
+                }
                 .swipeActions(edge: .trailing) {
                     Button(role: .destructive) {
                         Task { await store.deleteChemistry(id: chemistry.id) }
@@ -848,11 +1006,39 @@ struct DRChemistryTab: View {
         .sheet(isPresented: $showForm, onDismiss: { editTarget = nil }) {
             DRChemistryForm(store: store, target: editTarget) { showForm = false }
         }
+        .alert("Duplicate Chemistry?", isPresented: Binding(get: { duplicatingChemistry != nil }, set: { if !$0 { duplicatingChemistry = nil } })) {
+            Button("Cancel", role: .cancel) { duplicatingChemistry = nil }
+            Button("Duplicate") {
+                if let chemistry = duplicatingChemistry {
+                    Task { await duplicateChemistry(chemistry) }
+                }
+            }
+        } message: {
+            if let chemistry = duplicatingChemistry {
+                Text("Create a copy of '\(chemistry.menuLabel)'?")
+            }
+        }
         .task {
             await store.loadTypes()
             await store.loadChemistry()
         }
         .refreshable { await store.loadChemistry() }
+    }
+
+    private func duplicateChemistry(_ chemistry: DRChemistry) async {
+        let request = DRChemistryRequest(
+            dateCreated: chemistry.dateCreated,
+            typeId: chemistry.typeId,
+            percentSolution: chemistry.percentSolution,
+            createdFromId: drFirstCreatedFromId(chemistry.createdFromIds),
+            notes: chemistry.notes
+        )
+        do {
+            try await store.addChemistry(request)
+            duplicatingChemistry = nil
+        } catch {
+            store.errorMessage = error.localizedDescription
+        }
     }
 }
 
@@ -1208,7 +1394,11 @@ struct DROptionsTab: View {
     @State private var chemTypeTarget: DRLookup?
     @State private var negTypeTarget: DRLookup?
     @State private var expandedSections: Set<String> = []
-
+    @State private var duplicatingPaper: DRPaper?
+    @State private var duplicatingPhotoType: DRPhotoType?
+    @State private var duplicatingChemType: DRLookup?
+    @State private var duplicatingNegType: DRLookup?
+    
     var body: some View {
         List {
             // Paper Section
@@ -1236,6 +1426,9 @@ struct DROptionsTab: View {
                         }
                         .contentShape(Rectangle())
                         .onTapGesture { paperTarget = paper }
+                        .onLongPressGesture {
+                            duplicatingPaper = paper
+                        }
                         .swipeActions(edge: .trailing) {
                             Button(role: .destructive) { Task { await store.deletePaper(id: paper.id) } }
                             label: { Label("Delete", systemImage: "trash") }
@@ -1272,6 +1465,9 @@ struct DROptionsTab: View {
                         }
                         .contentShape(Rectangle())
                         .onTapGesture { photoTypeTarget = pt }
+                        .onLongPressGesture {
+                            duplicatingPhotoType = pt
+                        }
                         .swipeActions(edge: .trailing) {
                             Button(role: .destructive) { Task { await store.deletePhotoType(id: pt.id) } }
                             label: { Label("Delete", systemImage: "trash") }
@@ -1302,6 +1498,9 @@ struct DROptionsTab: View {
                         Text(t.name)
                             .contentShape(Rectangle())
                             .onTapGesture { chemTypeTarget = t }
+                            .onLongPressGesture {
+                                duplicatingChemType = t
+                            }
                             .swipeActions(edge: .trailing) {
                                 Button(role: .destructive) { Task { await deleteType("chemistry_types", id: t.id) } }
                                 label: { Label("Delete", systemImage: "trash") }
@@ -1332,6 +1531,9 @@ struct DROptionsTab: View {
                         Text(t.name)
                             .contentShape(Rectangle())
                             .onTapGesture { negTypeTarget = t }
+                            .onLongPressGesture {
+                                duplicatingNegType = t
+                            }
                             .swipeActions(edge: .trailing) {
                                 Button(role: .destructive) { Task { await deleteType("negative_types", id: t.id) } }
                                 label: { Label("Delete", systemImage: "trash") }
@@ -1376,12 +1578,104 @@ struct DROptionsTab: View {
         .sheet(item: $negTypeTarget, onDismiss: { negTypeTarget = nil }) { target in
             DRLookupTypeForm(store: store, resource: "negative_types", title: "Negative Type", target: target) { negTypeTarget = nil }
         }
+        .alert("Duplicate Paper?", isPresented: Binding(get: { duplicatingPaper != nil }, set: { if !$0 { duplicatingPaper = nil } })) {
+            Button("Cancel", role: .cancel) { duplicatingPaper = nil }
+            Button("Duplicate") {
+                if let paper = duplicatingPaper {
+                    Task { await duplicatePaper(paper) }
+                }
+            }
+        } message: {
+            if let paper = duplicatingPaper {
+                Text("Create a copy of '\(paper.displayName)'?")
+            }
+        }
+        .alert("Duplicate Process Type?", isPresented: Binding(get: { duplicatingPhotoType != nil }, set: { if !$0 { duplicatingPhotoType = nil } })) {
+            Button("Cancel", role: .cancel) { duplicatingPhotoType = nil }
+            Button("Duplicate") {
+                if let pt = duplicatingPhotoType {
+                    Task { await duplicatePhotoType(pt) }
+                }
+            }
+        } message: {
+            if let pt = duplicatingPhotoType {
+                Text("Create a copy of '\(pt.name)'?")
+            }
+        }
+        .alert("Duplicate Chemistry Type?", isPresented: Binding(get: { duplicatingChemType != nil }, set: { if !$0 { duplicatingChemType = nil } })) {
+            Button("Cancel", role: .cancel) { duplicatingChemType = nil }
+            Button("Duplicate") {
+                if let ct = duplicatingChemType {
+                    Task { await duplicateType("chemistry_types", ct) }
+                }
+            }
+        } message: {
+            if let ct = duplicatingChemType {
+                Text("Create a copy of '\(ct.name)'?")
+            }
+        }
+        .alert("Duplicate Negative Type?", isPresented: Binding(get: { duplicatingNegType != nil }, set: { if !$0 { duplicatingNegType = nil } })) {
+            Button("Cancel", role: .cancel) { duplicatingNegType = nil }
+            Button("Duplicate") {
+                if let nt = duplicatingNegType {
+                    Task { await duplicateType("negative_types", nt) }
+                }
+            }
+        } message: {
+            if let nt = duplicatingNegType {
+                Text("Create a copy of '\(nt.name)'?")
+            }
+        }
     }
 
     private func deleteType(_ res: String, id: Int) async {
         do { try await DarkroomAPIClient.delete(serverURL: store.serverURL, apiKey: store.apiKey, res: res, id: id)
             await store.loadTypes()
         } catch { store.errorMessage = error.localizedDescription }
+    }
+    private func duplicatePaper(_ paper: DRPaper) async {
+        let request = DRPaperRequest(
+            manufacturer: paper.manufacturer,
+            label: (paper.label ?? "") + " (Copy)",
+            weight: paper.weight,
+            hotPress: paper.hotPress == 1,
+            notes: paper.notes
+        )
+        do {
+            try await store.addPaper(request)
+            duplicatingPaper = nil
+        } catch {
+            store.errorMessage = error.localizedDescription
+        }
+    }
+
+    private func duplicatePhotoType(_ pt: DRPhotoType) async {
+        let request = DRPhotoTypeRequest(
+            name: pt.name + " (Copy)",
+            hasLayers: pt.showLayers,
+            devMode: pt.devMode
+        )
+        do {
+            try await store.addPhotoType(request)
+            duplicatingPhotoType = nil
+        } catch {
+            store.errorMessage = error.localizedDescription
+        }
+    }
+
+    private func duplicateType(_ resource: String, _ lookup: DRLookup) async {
+        let request = DRLookupRequest(name: lookup.name + " (Copy)")
+        do {
+            _ = try await DarkroomAPIClient.create(serverURL: store.serverURL, apiKey: store.apiKey, res: resource, body: request)
+            await store.loadTypes()
+            if resource == "chemistry_types" {
+                duplicatingChemType = nil
+            } else {
+                duplicatingNegType = nil
+            }
+        } catch {
+            store.errorMessage = error.localizedDescription
+        }
     }
 }
 
