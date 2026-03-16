@@ -238,24 +238,38 @@ struct WeatherSplashView: View {
     }
 
     private var sunriseHour: Double {
-        if let hour = hourInKaslo(from: weather?.sun.sunrise) {
-            return hour
+        // Try to parse the sunrise time string
+        if let sunriseStr = weather?.sun.sunrise, !sunriseStr.isEmpty {
+            if let hour = hourInKaslo(from: sunriseStr) {
+                return hour
+            }
         }
+        
+        // Fallback: calculate from daylight duration
         if let daylightMinutes = weather?.sun.daylightMinutes {
             let halfDay = Double(daylightMinutes) / 120.0
             return 12.0 - halfDay
         }
+        
+        // Last resort: default to 6:00 AM
         return 6.0
     }
 
     private var sunsetHour: Double {
-        if let hour = hourInKaslo(from: weather?.sun.sunset) {
-            return hour
+        // Try to parse the sunset time string
+        if let sunsetStr = weather?.sun.sunset, !sunsetStr.isEmpty {
+            if let hour = hourInKaslo(from: sunsetStr) {
+                return hour
+            }
         }
+        
+        // Fallback: calculate from daylight duration
         if let daylightMinutes = weather?.sun.daylightMinutes {
             let halfDay = Double(daylightMinutes) / 120.0
             return 12.0 + halfDay
         }
+        
+        // Last resort: default to 6:00 PM
         return 18.0
     }
 
@@ -272,16 +286,27 @@ struct WeatherSplashView: View {
     private func hourInKaslo(from isoString: String?) -> Double? {
         guard let isoString else { return nil }
         let value = isoString.trimmingCharacters(in: .whitespacesAndNewlines)
-
+        
+        // Try parsing as ISO date first
         if let parsed = parseISODate(value) {
             return dateToKasloHour(parsed)
         }
+        
+        // Try parsing as server datetime format
         if let parsed = parseServerDateTime(value) {
             return dateToKasloHour(parsed)
         }
+        
+        // Try parsing as simple clock time (HH:MM or H:MM)
         if let localHour = parseClockTime(value) {
             return localHour
         }
+        
+        // Try parsing as decimal hour (e.g., "6.5" for 6:30)
+        if let decimalHour = Double(value) {
+            return decimalHour
+        }
+        
         return nil
     }
 
@@ -348,7 +373,11 @@ struct WeatherSplashView: View {
         guard parts.count >= 2 else { return nil }
         guard let hour = Int(parts[0]), let minute = Int(parts[1]) else { return nil }
         guard (0...23).contains(hour), (0...59).contains(minute) else { return nil }
-        return Double(hour) + (Double(minute) / 60.0)
+        
+        // Also handle seconds if present
+        let seconds = parts.count >= 3 ? (Int(parts[2]) ?? 0) : 0
+        
+        return Double(hour) + (Double(minute) / 60.0) + (Double(seconds) / 3600.0)
     }
 
     private func dateToKasloHour(_ date: Date) -> Double {
