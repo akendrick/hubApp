@@ -31,8 +31,8 @@ struct WeatherSplashView: View {
                 Spacer()
                 
                 // Location
-                Text("KASLO")
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                Text("KNOTWORK")
+                    .font(.system(size: 32, weight: .semibold, design: .rounded))
                     .tracking(3)
                     .foregroundStyle(.white.opacity(0.6))
                 
@@ -43,6 +43,10 @@ struct WeatherSplashView: View {
                 Text(currentTime, style: .time)
                     .font(.system(size: 24, weight: .medium, design: .rounded))
                     .foregroundStyle(.white)
+
+                if let precipSummary {
+                    precipSummary
+                }
                 
                 Spacer()
                 
@@ -50,7 +54,7 @@ struct WeatherSplashView: View {
                 VStack(spacing: 8) {
                     Image(systemName: "hand.tap.fill")
                         .font(.title3)
-                    Text("Tap to continue")
+                    Text("Tap aywhere to continue")
                         .font(.caption)
                 }
                 .foregroundStyle(.white.opacity(0.4))
@@ -71,6 +75,31 @@ struct WeatherSplashView: View {
     }
     
     // MARK: - 24-Hour Solar Dial
+
+    private var precipSummary: AnyView? {
+        guard let obs = weather?.obs else { return nil }
+
+        let nowText = obs.precipRateMmh.map { String(format: "Now %.1f mm/h", $0) }
+        let dayText = obs.precip24hMm.map { String(format: "24h %.1f mm", $0) }
+        let weekText = obs.precip7dMm.map { String(format: "7d %.1f mm", $0) }
+        let parts = [nowText, dayText, weekText].compactMap { $0 }
+
+        guard !parts.isEmpty else { return nil }
+
+        return AnyView(
+            HStack(spacing: 10) {
+                Image(systemName: "cloud.rain.fill")
+                    .font(.caption.weight(.semibold))
+                Text(parts.joined(separator: "  ·  "))
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+            }
+            .foregroundStyle(.white.opacity(0.78))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(Color.white.opacity(0.08))
+            .clipShape(Capsule())
+        )
+    }
     
     private var solarDial: some View {
         GeometryReader { geometry in
@@ -114,7 +143,7 @@ struct WeatherSplashView: View {
                 // Current date (inside dial, daylight half)
                 Text(todayMonthLabel())
                     .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color(red: 0.46, green: 0.83, blue: 1.2)) // Custom colour
                     .position(x: center.x, y: center.y - (size * 0.12))
 
                 // Sun position indicator (behind hour labels)
@@ -126,7 +155,7 @@ struct WeatherSplashView: View {
                 }
 
                 // Moon position indicator (outside the dial)
-                moonIndicator(emoji: weather?.moon.emoji ?? "🌑", center: center, radius: size * 0.35)
+                moonIndicator(emoji: weather?.moon.emoji ?? "🌑", center: center, radius: size * 0.4)
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
         }
@@ -172,7 +201,7 @@ struct WeatherSplashView: View {
                 .frame(width: 20, height: 20)
                 .overlay(
                     Circle()
-                        .stroke(Color.orange.opacity(0.7), lineWidth: 1.5)
+                        .stroke(Color.orange.opacity(0.7), lineWidth: 1.1)
                 )
                 .shadow(color: .white.opacity(0.95), radius: 12)
         }
