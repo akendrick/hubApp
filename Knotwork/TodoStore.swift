@@ -132,22 +132,12 @@ class TodoStore: ObservableObject {
     
     /// Non-recurring pending tasks (primary focus)
     var regularPendingItems: [TodoItem] {
-        let regular = pendingItems.filter { $0.recurWeekday == nil && $0.recurDay == nil }
-        print("📋 Regular items: \(regular.count)")
-        for item in regular {
-            print("   ✓ \(item.text)")
-        }
-        return regular
+        pendingItems.filter { $0.recurWeekday == nil && $0.recurDay == nil }
     }
     
     /// Recurring pending tasks (weekly or monthly)
     var recurringPendingItems: [TodoItem] {
-        let recurring = pendingItems.filter { $0.recurWeekday != nil || $0.recurDay != nil }
-        print("🔁 Recurring items: \(recurring.count)")
-        for item in recurring {
-            print("   ↻ \(item.text) - weekday: '\(item.recurWeekday ?? "nil")', day: '\(item.recurDay ?? "nil")'")
-        }
-        return recurring
+        pendingItems.filter { $0.recurWeekday != nil || $0.recurDay != nil }
     }
 
     var doneItems: [TodoItem] {

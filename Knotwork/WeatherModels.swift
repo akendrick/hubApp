@@ -49,6 +49,7 @@ struct WeatherObservation: Codable {
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        let raw = try decoder.container(keyedBy: AnyCodingKey.self)
         temp = c.decodeLossyDouble(forKey: .temp)
         feelsLike = c.decodeLossyDouble(forKey: .feelsLike)
         dewPoint = c.decodeLossyDouble(forKey: .dewPoint)
@@ -57,13 +58,64 @@ struct WeatherObservation: Codable {
         windSpeedKmh = c.decodeLossyDouble(forKey: .windSpeedKmh)
         windDirection = c.decodeLossyInt(forKey: .windDirection)
         windGustKmh = c.decodeLossyDouble(forKey: .windGustKmh)
-        precipRateMmh = c.decodeLossyDouble(forKey: .precipRateMmh)
-        precip24hMm = c.decodeLossyDouble(forKey: .precip24hMm)
-        precip7dMm = c.decodeLossyDouble(forKey: .precip7dMm)
+        precipRateMmh = raw.decodeLossyDouble(forKeys: [
+            "precip_rate_mmh",
+            "precipRateMmh",
+            "rain_rate_mmh",
+            "rainRateMmh",
+            "rainrate_mmh",
+            "rain_rate",
+            "rainRate",
+            "rainrate",
+            "rainratemm",
+            "rainratein",
+            "rrain_piezo",
+            "piezo_rain_rate",
+            "piezoRainRate"
+        ])
+        precip24hMm = raw.decodeLossyDouble(forKeys: [
+            "precip_24h_mm",
+            "precip24hMm",
+            "rain_24h_mm",
+            "rain24hMm",
+            "dailyrainmm",
+            "daily_rain_mm",
+            "dailyRainMm",
+            "dailyrainin"
+        ])
+        precip7dMm = raw.decodeLossyDouble(forKeys: [
+            "precip_7d_mm",
+            "precip7dMm",
+            "rain_7d_mm",
+            "rain7dMm",
+            "weeklyrainmm",
+            "weekly_rain_mm",
+            "weeklyRainMm",
+            "weeklyrainin"
+        ])
         uvIndex = c.decodeLossyDouble(forKey: .uvIndex)
         solarWm2 = c.decodeLossyDouble(forKey: .solarWm2)
         indoorTemp = c.decodeLossyDouble(forKey: .indoorTemp)
         indoorHumidity = c.decodeLossyInt(forKey: .indoorHumidity)
+    }
+}
+
+private struct AnyCodingKey: CodingKey {
+    let stringValue: String
+    let intValue: Int?
+
+    init(_ stringValue: String) {
+        self.stringValue = stringValue
+        self.intValue = nil
+    }
+
+    init?(stringValue: String) {
+        self.init(stringValue)
+    }
+
+    init?(intValue: Int) {
+        self.stringValue = String(intValue)
+        self.intValue = intValue
     }
 }
 
@@ -72,7 +124,7 @@ private extension KeyedDecodingContainer where K == WeatherObservation.CodingKey
         if let d = try? decodeIfPresent(Double.self, forKey: key) { return d }
         if let i = try? decodeIfPresent(Int.self, forKey: key) { return Double(i) }
         if let s = try? decodeIfPresent(String.self, forKey: key) {
-            return Double(s.trimmingCharacters(in: .whitespacesAndNewlines))
+            return parseLossyDouble(s)
         }
         return nil
     }
@@ -86,6 +138,40 @@ private extension KeyedDecodingContainer where K == WeatherObservation.CodingKey
         }
         return nil
     }
+}
+
+private extension KeyedDecodingContainer where K == AnyCodingKey {
+    func decodeLossyDouble(forKeys keys: [String]) -> Double? {
+        for keyString in keys {
+            let key = AnyCodingKey(keyString)
+
+            if let d = try? decodeIfPresent(Double.self, forKey: key) {
+                return d
+            }
+            if let i = try? decodeIfPresent(Int.self, forKey: key) {
+                return Double(i)
+            }
+            if let s = try? decodeIfPresent(String.self, forKey: key),
+               let parsed = parseLossyDouble(s) {
+                return parsed
+            }
+            if let nested = try? nestedContainer(keyedBy: AnyCodingKey.self, forKey: key),
+               let value = nested.decodeLossyDouble(forKeys: ["value", "amount", "mm", "mmh", "mm_h", "in", "inhr", "in_h"]) {
+                return value
+            }
+        }
+        return nil
+    }
+}
+
+private func parseLossyDouble(_ raw: String) -> Double? {
+    let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    if let exact = Double(trimmed) {
+        return exact
+    }
+
+    let filtered = trimmed.filter { "0123456789.-".contains($0) }
+    return Double(filtered)
 }
 
 // MARK: - Daily Forecast
