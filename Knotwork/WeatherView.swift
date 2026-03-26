@@ -143,34 +143,48 @@ struct WeatherView: View {
     }
 
     private func otherConditionsCard(_ obs: WeatherObservation) -> some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-            if let dewPoint = obs.dewPoint {
-                weatherDetail(icon: "drop.fill", label: "Dew Point", value: "\(Int(dewPoint.rounded()))°C")
+        VStack(spacing: 18) {
+            HStack(alignment: .top, spacing: 20) {
+                VStack(spacing: 14) {
+                    weatherDetail(
+                        icon: "cloud.rain.fill",
+                        label: "Now (Precip)",
+                        value: obs.precipRateMmh.map { String(format: "%.1f mm/h", $0) } ?? "0.0 mm/h"
+                    )
+                    weatherDetail(
+                        icon: "drop.fill",
+                        label: "Prev 24h",
+                        value: obs.precip24hMm.map { String(format: "%.1f mm", $0) } ?? "0.0 mm"
+                    )
+                    weatherDetail(
+                        icon: "cloud.rain",
+                        label: "Past Week",
+                        value: obs.precip7dMm.map { String(format: "%.1f mm", $0) } ?? "0.0 mm"
+                    )
+                }
+                .frame(maxWidth: .infinity, alignment: .top)
+
+                VStack(spacing: 14) {
+                    if let uv = obs.uvIndex {
+                        weatherDetail(icon: "sun.max.fill", label: "UV Index", value: String(format: "%.1f", uv))
+                    }
+                    if let dewPoint = obs.dewPoint {
+                        weatherDetail(icon: "drop.fill", label: "Dew Point", value: "\(Int(dewPoint.rounded()))°C")
+                    }
+                    if let wind = obs.windSpeedKmh {
+                        let windText = obs.windGustKmh != nil ? "\(Int(wind)) / \(Int(obs.windGustKmh!)) km/h" : "\(Int(wind)) km/h"
+                        weatherDetail(icon: "wind", label: "Wind", value: windText)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .top)
             }
+
             if let pressure = obs.pressureHpa {
-                weatherDetail(icon: "gauge.with.dots.needle.bottom.50percent", label: "Pressure", value: "\(Int(pressure.rounded())) hPa")
-            }
-            if let wind = obs.windSpeedKmh {
-                let windText = obs.windGustKmh != nil ? "\(Int(wind)) / \(Int(obs.windGustKmh!)) km/h" : "\(Int(wind)) km/h"
-                weatherDetail(icon: "wind", label: "Wind", value: windText)
-            }
-            weatherDetail(
-                icon: "cloud.rain.fill",
-                label: "Now (Precip)",
-                value: obs.precipRateMmh.map { String(format: "%.1f mm/h", $0) } ?? "0.0 mm/h"
-            )
-            weatherDetail(
-                icon: "drop.fill",
-                label: "Prev 24h",
-                value: obs.precip24hMm.map { String(format: "%.1f mm", $0) } ?? "0.0 mm"
-            )
-            weatherDetail(
-                icon: "cloud.rain",
-                label: "Past Week",
-                value: obs.precip7dMm.map { String(format: "%.1f mm", $0) } ?? "0.0 mm"
-            )
-            if let uv = obs.uvIndex {
-                weatherDetail(icon: "sun.max.fill", label: "UV Index", value: String(format: "%.1f", uv))
+                weatherDetail(
+                    icon: "gauge.with.dots.needle.bottom.50percent",
+                    label: "Pressure",
+                    value: "\(Int(pressure.rounded())) hPa"
+                )
             }
         }
         .padding()

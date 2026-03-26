@@ -26,6 +26,44 @@ private extension KeyedDecodingContainer {
     }
 }
 
+private struct DRAnyCodingKey: CodingKey {
+    let stringValue: String
+    let intValue: Int?
+
+    init(_ stringValue: String) {
+        self.stringValue = stringValue
+        self.intValue = nil
+    }
+
+    init?(stringValue: String) {
+        self.init(stringValue)
+    }
+
+    init?(intValue: Int) {
+        self.stringValue = String(intValue)
+        self.intValue = intValue
+    }
+}
+
+private extension KeyedDecodingContainer where K == DRAnyCodingKey {
+    func decodeLossyString(forKeys keys: [String]) -> String? {
+        for keyString in keys {
+            let key = DRAnyCodingKey(keyString)
+            if let s = try? decodeIfPresent(String.self, forKey: key) {
+                let trimmed = s.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty { return trimmed }
+            }
+            if let i = try? decodeIfPresent(Int.self, forKey: key) {
+                return String(i)
+            }
+            if let d = try? decodeIfPresent(Double.self, forKey: key) {
+                return String(d)
+            }
+        }
+        return nil
+    }
+}
+
 struct DRLookup: Identifiable, Codable, Hashable {
     var id: Int
     var name: String
@@ -85,8 +123,10 @@ struct DRChemistry: Identifiable, Codable {
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        let raw = try decoder.container(keyedBy: DRAnyCodingKey.self)
         id = c.decodeLossyIntIfPresent(forKey: .id) ?? 0
         label = c.decodeLossyStringIfPresent(forKey: .label)
+            ?? raw.decodeLossyString(forKeys: ["chem-label", "chem_label", "chemLabel", "title", "title_id", "titleId", "name"])
         dateCreated = c.decodeLossyStringIfPresent(forKey: .dateCreated) ?? ""
         typeId = c.decodeLossyIntIfPresent(forKey: .typeId)
         typeName = c.decodeLossyStringIfPresent(forKey: .typeName)
@@ -447,11 +487,31 @@ struct DRPhotoTypeRequest: Encodable {
 }
 
 struct DRChemistryRequest: Encodable {
+    var label: String?
     var dateCreated: String
     var typeId: Int?
     var percentSolution: Double?
     var createdFromId: Int?
     var notes: String?
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(label, forKey: .label)
+        try c.encodeIfPresent(label, forKey: .chemLabel)
+        try c.encodeIfPresent(label, forKey: .title)
+        try c.encodeIfPresent(label, forKey: .titleId)
+        try c.encode(dateCreated, forKey: .dateCreated)
+        try c.encodeIfPresent(typeId, forKey: .typeId)
+        try c.encodeIfPresent(percentSolution, forKey: .percentSolution)
+        try c.encodeIfPresent(createdFromId, forKey: .createdFromId)
+        try c.encodeIfPresent(notes, forKey: .notes)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case label
+        case chemLabel = "chem-label"
+        case title, titleId, dateCreated, typeId, percentSolution, createdFromId, notes
+    }
 }
 
 struct DRPaperRequest: Encodable {

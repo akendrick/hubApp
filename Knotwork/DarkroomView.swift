@@ -10,7 +10,7 @@ struct DarkroomView: View {
     enum DRTab: String, CaseIterable {
         case photos    = "Photos"
         case layers    = "Layers"
-        case negatives = "Negatives"
+        case chemistry = "Chemistry"
         case options   = "Options"
     }
 
@@ -23,7 +23,7 @@ struct DarkroomView: View {
                     switch selectedTab {
                     case .photos:    DRPhotosTab(store: store)
                     case .layers:    DRLayersTab(store: store)
-                    case .negatives: DRNegativesTab(store: store)
+                    case .chemistry: DRChemistryTab(store: store)
                     case .options:   DROptionsTab(store: store)
                     }
                 }
@@ -72,21 +72,74 @@ private struct DREmptyState: View {
 
 struct DRLayersTab: View {
     @ObservedObject var store: DarkroomStore
+    @State private var showNegatives = false
     @State private var showCarbonTissue = false
     @State private var showSupportPaper = false
     @State private var showPaper = false
+    @State private var showAllNegatives = false
     @State private var showAllCarbonTissue = false
     @State private var showAllSupportPaper = false
     @State private var showAllPaper = false
+    @State private var showNegativeForm = false
     @State private var showCarbonForm = false
     @State private var showSupportForm = false
     @State private var showPaperForm = false
+    @State private var editNegativeTarget: DRNegative?
     @State private var editCarbonTarget: DRCarbonTissue?
     @State private var editSupportTarget: DRSupportPaper?
     @State private var editPaperTarget: DRPaper?
 
     var body: some View {
         List {
+            Section {
+                if showNegatives {
+                    ForEach(visibleNegatives) { negative in
+                        DRNegativeListRow(negative: negative)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                editNegativeTarget = negative
+                                showNegativeForm = true
+                            }
+                            .onLongPressGesture(minimumDuration: 0.45) {
+                                Task { await duplicateNegative(negative) }
+                            }
+                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                Button {
+                                    editNegativeTarget = negative
+                                    showNegativeForm = true
+                                } label: {
+                                    Label("Edit", systemImage: "pencil")
+                                }
+                                .tint(.blue)
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    Task { await store.deleteNegative(id: negative.id) }
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
+                    }
+                    if store.negatives.count > 10 {
+                        Button(showAllNegatives ? "Less" : "More") {
+                            showAllNegatives.toggle()
+                        }
+                        .font(.caption.weight(.semibold))
+                        .frame(maxWidth: .infinity, alignment: .center)
+                    }
+                }
+            } header: {
+                DRCollapsibleHeader(
+                    title: "Negatives",
+                    isExpanded: showNegatives,
+                    onToggle: { showNegatives.toggle() },
+                    onAdd: showNegatives ? {
+                        editNegativeTarget = nil
+                        showNegativeForm = true
+                    } : nil
+                )
+            }
+
             Section {
                 if showCarbonTissue {
                     ForEach(visibleCarbonTissues) { ct in
@@ -235,6 +288,9 @@ struct DRLayersTab: View {
             }
         }
         .listStyle(.insetGrouped)
+        .sheet(isPresented: $showNegativeForm, onDismiss: { editNegativeTarget = nil }) {
+            DRNegativeForm(store: store, target: editNegativeTarget) { showNegativeForm = false }
+        }
         .sheet(isPresented: $showCarbonForm, onDismiss: { editCarbonTarget = nil }) {
             DRCarbonTissueForm(store: store, target: editCarbonTarget) { showCarbonForm = false }
         }
@@ -246,6 +302,11 @@ struct DRLayersTab: View {
         }
         .task { await store.loadAllForPhotoForm() }
         .refreshable { await store.loadAllForPhotoForm() }
+    }
+
+    private var visibleNegatives: [DRNegative] {
+        let items = store.negatives.sorted { $0.id > $1.id }
+        return showAllNegatives ? items : Array(items.prefix(10))
     }
 
     private var visibleCarbonTissues: [DRCarbonTissue] {
@@ -274,6 +335,18 @@ struct DRLayersTab: View {
             notes: item.notes
         )
         do { try await store.addCarbonTissue(req) }
+        catch { store.errorMessage = error.localizedDescription }
+    }
+
+    private func duplicateNegative(_ item: DRNegative) async {
+        let copiedTitle = item.titleId.map { $0.isEmpty ? "Copy" : "\($0) Copy" }
+        let req = DRNegativeRequest(
+            titleId: copiedTitle,
+            dateCreated: item.dateCreated,
+            typeId: item.typeId,
+            settingsNotes: item.settingsNotes
+        )
+        do { try await store.addNegative(req) }
         catch { store.errorMessage = error.localizedDescription }
     }
 
@@ -1005,15 +1078,27 @@ private struct DRCarbonTissueListRow: View {
     let ct: DRCarbonTissue
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack {
-                Text(ct.menuLabel).font(.headline)
-                Spacer()
-                Text(ct.datePoured).font(.caption).foregroundStyle(.secondary)
-            }
-            HStack(spacing: 8) {
-                if let sz = ct.size { Text(sz).font(.caption).foregroundStyle(.secondary) }
-                if let c = ct.chemType { Text(c).font(.caption).foregroundStyle(.secondary) }
+        HStack(spacing: 12) {
+            Text(ct.titleId ?? "#\(ct.id)")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Color.orange)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(ct.size ?? ct.menuLabel).font(.subheadline)
+                HStack(spacing: 6) {
+                    Text(ct.datePoured).font(.caption).foregroundStyle(.secondary)
+                    if let chemistry = ct.chemType {
+                        Text(chemistry)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.blue)
+                    }
+                    if let amount = ct.amountPoured {
+                        Text(amount).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
             }
         }
     }
@@ -1041,12 +1126,43 @@ private struct DRPaperListRow: View {
     }
 }
 
+private struct DRNegativeListRow: View {
+    let negative: DRNegative
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack {
+                Text(negative.menuLabel).font(.headline)
+                Spacer()
+                Text(negative.dateCreated).font(.caption).foregroundStyle(.secondary)
+            }
+            if let type = negative.typeName {
+                Text(type).font(.caption).foregroundStyle(.secondary)
+            }
+            if let notes = negative.settingsNotes, !notes.isEmpty {
+                Text(notes).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+            }
+        }
+    }
+}
+
 private struct DRChemistryListRow: View {
     let chemistry: DRChemistry
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(chemistry.menuLabel).font(.subheadline.weight(.semibold))
+            HStack(spacing: 8) {
+                if let label = chemistry.label, !label.isEmpty {
+                    Text(label)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.blue)
+                        .clipShape(Capsule())
+                }
+                Text(primaryChemistryText).font(.subheadline.weight(.semibold))
+            }
             HStack(spacing: 8) {
                 Text(chemistry.dateCreated).font(.caption).foregroundStyle(.secondary)
                 if let pct = chemistry.percentSolution {
@@ -1057,6 +1173,13 @@ private struct DRChemistryListRow: View {
                 Text(notes).font(.caption).foregroundStyle(.secondary).lineLimit(2)
             }
         }
+    }
+
+    private var primaryChemistryText: String {
+        if let label = chemistry.label, !label.isEmpty {
+            return chemistry.typeName ?? "Chemistry"
+        }
+        return chemistry.menuLabel
     }
 }
 
@@ -1371,6 +1494,75 @@ struct DRNegativeForm: View {
     }
 }
 
+struct DRChemistryTab: View {
+    @ObservedObject var store: DarkroomStore
+    @State private var showAddForm = false
+    @State private var editTarget: DRChemistry?
+
+    var body: some View {
+        List {
+            if store.chemistry.isEmpty {
+                DREmptyState(label: "chemistry", icon: "flask")
+            }
+            ForEach(store.chemistry.sorted { $0.id > $1.id }) { chemistry in
+                DRChemistryListRow(chemistry: chemistry)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        editTarget = chemistry
+                    }
+                    .onLongPressGesture(minimumDuration: 0.45) {
+                        Task { await duplicateChemistry(chemistry) }
+                    }
+                    .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                        Button {
+                            editTarget = chemistry
+                        } label: {
+                            Label("Edit", systemImage: "pencil")
+                        }
+                        .tint(.blue)
+                    }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) {
+                            Task { await store.deleteChemistry(id: chemistry.id) }
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showAddForm = true
+                } label: {
+                    Image(systemName: "plus")
+                }
+            }
+        }
+        .sheet(isPresented: $showAddForm) {
+            DRChemistryForm(store: store, target: nil) { showAddForm = false }
+        }
+        .sheet(item: $editTarget) { chemistry in
+            DRChemistryForm(store: store, target: chemistry) { editTarget = nil }
+        }
+        .task { await store.loadChemistry() }
+        .refreshable { await store.loadChemistry() }
+    }
+
+    private func duplicateChemistry(_ item: DRChemistry) async {
+        let req = DRChemistryRequest(
+            dateCreated: item.dateCreated,
+            typeId: item.typeId,
+            percentSolution: item.percentSolution,
+            createdFromId: item.createdFromIds.flatMap(Int.init),
+            notes: item.notes
+        )
+        do { try await store.addChemistry(req) }
+        catch { store.errorMessage = error.localizedDescription }
+    }
+}
+
 struct DRPhotoTypeForm: View {
     @ObservedObject var store: DarkroomStore
     let target: DRPhotoType?
@@ -1486,6 +1678,7 @@ struct DRChemistryForm: View {
     let target: DRChemistry?
     let onDone: () -> Void
 
+    @State private var label = ""
     @State private var dateCreated = Date()
     @State private var typeId: Int? = nil
     @State private var percentSolution = ""
@@ -1498,6 +1691,7 @@ struct DRChemistryForm: View {
         NavigationStack {
             Form {
                 Section("Chemistry") {
+                    TextField("Title / Label", text: $label, prompt: Text("e.g. IndiaInkSample"))
                     DatePicker("Date Created", selection: $dateCreated, displayedComponents: .date)
                     Picker("Type", selection: $typeId) {
                         Text("None").tag(Optional<Int>.none)
@@ -1533,6 +1727,7 @@ struct DRChemistryForm: View {
         }
         .onAppear {
             guard let target else { return }
+            label = target.label ?? ""
             dateCreated = drParseDate(target.dateCreated)
             typeId = target.typeId
             percentSolution = target.percentSolution.map { String($0) } ?? ""
@@ -1548,6 +1743,7 @@ struct DRChemistryForm: View {
         saving = true
         error = nil
         let req = DRChemistryRequest(
+            label: label.isEmpty ? nil : label,
             dateCreated: drFormatDate(dateCreated),
             typeId: typeId,
             percentSolution: Double(percentSolution),
