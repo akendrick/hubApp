@@ -24,89 +24,29 @@ class DarkroomStore: ObservableObject {
         self.apiKey    = apiKey
     }
 
-    private func present(_ error: Error) {
-        if error is CancellationError { return }
-        errorMessage = error.localizedDescription
-    }
-
-    private func loadResource<T: Decodable>(_ res: String, assign: (T) -> Void) async -> String? {
-        do {
-            let value: T = try await fetch(res)
-            assign(value)
-            return nil
-        } catch {
-            return "\(res): \(error.localizedDescription)"
-        }
-    }
-
-    private func presentPartialFailures(_ failures: [String]) {
-        guard !failures.isEmpty else { return }
-        errorMessage = "Some Darkroom data did not load.\n" + failures.joined(separator: "\n")
-    }
-
     // MARK: - Bootstrap
 
     func loadTypes() async {
-        errorMessage = nil
-        var failures: [String] = []
-
-        if let failure: String = await loadResource("photo_types", assign: { (value: [DRPhotoType]) in
-            photoTypes = value
-        }) {
-            failures.append(failure)
-        }
-        if let failure: String = await loadResource("chemistry_types", assign: { (value: [DRLookup]) in
-            chemistryTypes = value
-        }) {
-            failures.append(failure)
-        }
-        if let failure: String = await loadResource("negative_types", assign: { (value: [DRLookup]) in
-            negativeTypes = value
-        }) {
-            failures.append(failure)
-        }
-
-        presentPartialFailures(failures)
+        do {
+            async let pt: [DRPhotoType] = fetch("photo_types")
+            async let ct: [DRLookup]   = fetch("chemistry_types")
+            async let nt: [DRLookup]   = fetch("negative_types")
+            (photoTypes, chemistryTypes, negativeTypes) = try await (pt, ct, nt)
+        } catch { errorMessage = error.localizedDescription }
     }
 
     // Load everything needed to render the photo form
     func loadAllForPhotoForm() async {
         isLoading = true; defer { isLoading = false }
-        errorMessage = nil
-        var failures: [String] = []
-
-        if let failure: String = await loadResource("photo_types", assign: { (value: [DRPhotoType]) in
-            photoTypes = value
-        }) {
-            failures.append(failure)
-        }
-        if let failure: String = await loadResource("support_paper", assign: { (value: [DRSupportPaper]) in
-            supportPapers = value
-        }) {
-            failures.append(failure)
-        }
-        if let failure: String = await loadResource("carbon_tissue", assign: { (value: [DRCarbonTissue]) in
-            carbonTissues = value
-        }) {
-            failures.append(failure)
-        }
-        if let failure: String = await loadResource("negative", assign: { (value: [DRNegative]) in
-            negatives = value
-        }) {
-            failures.append(failure)
-        }
-        if let failure: String = await loadResource("chemistry", assign: { (value: [DRChemistry]) in
-            chemistry = value
-        }) {
-            failures.append(failure)
-        }
-        if let failure: String = await loadResource("paper", assign: { (value: [DRPaper]) in
-            papers = value
-        }) {
-            failures.append(failure)
-        }
-
-        presentPartialFailures(failures)
+        do {
+            async let pt: [DRPhotoType]    = fetch("photo_types")
+            async let sp: [DRSupportPaper] = fetch("support_paper")
+            async let ct: [DRCarbonTissue] = fetch("carbon_tissue")
+            async let neg: [DRNegative]    = fetch("negative")
+            async let c:   [DRChemistry]   = fetch("chemistry")
+            async let p:   [DRPaper]       = fetch("paper")
+            (photoTypes, supportPapers, carbonTissues, negatives, chemistry, papers) = try await (pt, sp, ct, neg, c, p)
+        } catch { errorMessage = error.localizedDescription }
     }
 
     // MARK: - Tab loaders
@@ -114,67 +54,32 @@ class DarkroomStore: ObservableObject {
     func loadPhotos() async {
         isLoading = true; defer { isLoading = false }
         do { photos = try await fetch("photo") }
-        catch { present(error) }
+        catch { errorMessage = error.localizedDescription }
     }
 
     func loadSupportPapers() async {
         do { supportPapers = try await fetch("support_paper") }
-        catch { present(error) }
+        catch { errorMessage = error.localizedDescription }
     }
 
     func loadCarbonTissues() async {
         do { carbonTissues = try await fetch("carbon_tissue") }
-        catch { present(error) }
+        catch { errorMessage = error.localizedDescription }
     }
 
     func loadChemistry() async {
         do { chemistry = try await fetch("chemistry") }
-        catch { present(error) }
+        catch { errorMessage = error.localizedDescription }
     }
+
+    func loadPapers() async {
+        do { papers = try await fetch("paper") }
+        catch { errorMessage = error.localizedDescription }
+    }
+
     func loadNegatives() async {
-            do { negatives = try await fetch("negative") }
-            catch { present(error) }
-        }
-
-        func loadPapers() async {
-            do { papers = try await fetch("paper") }
-            catch { present(error) }
-        }
-
-        // MARK: - Paper CRUD
-
-        func addPaper(_ req: DRPaperRequest) async throws {
-            _ = try await DarkroomAPIClient.create(serverURL: serverURL, apiKey: apiKey, res: "paper", body: req)
-            await loadPapers()
-        }
-        
-        func updatePaper(id: Int, _ req: DRPaperRequest) async throws {
-            try await DarkroomAPIClient.update(serverURL: serverURL, apiKey: apiKey, res: "paper", id: id, body: req)
-            await loadPapers()
-        }
-        
-        func deletePaper(id: Int) async {
-            do {
-                try await DarkroomAPIClient.delete(serverURL: serverURL, apiKey: apiKey, res: "paper", id: id)
-                papers.removeAll { $0.id == id }
-            } catch { present(error) }
-        }
-
-// MARK: - Chemistry CRUD
-
-    func addChemistry(_ req: DRChemistryRequest) async throws {
-        _ = try await DarkroomAPIClient.create(serverURL: serverURL, apiKey: apiKey, res: "chemistry", body: req)
-        await loadChemistry()
-    }
-    func updateChemistry(id: Int, _ req: DRChemistryRequest) async throws {
-        try await DarkroomAPIClient.update(serverURL: serverURL, apiKey: apiKey, res: "chemistry", id: id, body: req)
-        await loadChemistry()
-    }
-    func deleteChemistry(id: Int) async {
-        do {
-            try await DarkroomAPIClient.delete(serverURL: serverURL, apiKey: apiKey, res: "chemistry", id: id)
-            chemistry.removeAll { $0.id == id }
-        } catch { present(error) }
+        do { negatives = try await fetch("negative") }
+        catch { errorMessage = error.localizedDescription }
     }
 
     // MARK: - Photo Types CRUD
@@ -191,7 +96,7 @@ class DarkroomStore: ObservableObject {
         do {
             try await DarkroomAPIClient.delete(serverURL: serverURL, apiKey: apiKey, res: "photo_types", id: id)
             photoTypes.removeAll { $0.id == id }
-        } catch { present(error) }
+        } catch { errorMessage = error.localizedDescription }
     }
 
     // MARK: - Support Paper CRUD
@@ -207,7 +112,7 @@ class DarkroomStore: ObservableObject {
     func deleteSupportPaper(id: Int) async {
         do { try await DarkroomAPIClient.delete(serverURL: serverURL, apiKey: apiKey, res: "support_paper", id: id)
             supportPapers.removeAll { $0.id == id }
-        } catch { present(error) }
+        } catch { errorMessage = error.localizedDescription }
     }
 
     // MARK: - Carbon Tissue CRUD
@@ -223,7 +128,41 @@ class DarkroomStore: ObservableObject {
     func deleteCarbonTissue(id: Int) async {
         do { try await DarkroomAPIClient.delete(serverURL: serverURL, apiKey: apiKey, res: "carbon_tissue", id: id)
             carbonTissues.removeAll { $0.id == id }
-        } catch { present(error) }
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    // MARK: - Chemistry CRUD
+
+    func addChemistry(_ req: DRChemistryRequest) async throws {
+        _ = try await DarkroomAPIClient.create(serverURL: serverURL, apiKey: apiKey, res: "chemistry", body: req)
+        await loadChemistry()
+    }
+    func updateChemistry(id: Int, _ req: DRChemistryRequest) async throws {
+        try await DarkroomAPIClient.update(serverURL: serverURL, apiKey: apiKey, res: "chemistry", id: id, body: req)
+        await loadChemistry()
+    }
+    func deleteChemistry(id: Int) async {
+        do {
+            try await DarkroomAPIClient.delete(serverURL: serverURL, apiKey: apiKey, res: "chemistry", id: id)
+            chemistry.removeAll { $0.id == id }
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    // MARK: - Paper CRUD
+
+    func addPaper(_ req: DRPaperRequest) async throws {
+        _ = try await DarkroomAPIClient.create(serverURL: serverURL, apiKey: apiKey, res: "paper", body: req)
+        await loadPapers()
+    }
+    func updatePaper(id: Int, _ req: DRPaperRequest) async throws {
+        try await DarkroomAPIClient.update(serverURL: serverURL, apiKey: apiKey, res: "paper", id: id, body: req)
+        await loadPapers()
+    }
+    func deletePaper(id: Int) async {
+        do {
+            try await DarkroomAPIClient.delete(serverURL: serverURL, apiKey: apiKey, res: "paper", id: id)
+            papers.removeAll { $0.id == id }
+        } catch { errorMessage = error.localizedDescription }
     }
 
     // MARK: - Negative CRUD
@@ -239,7 +178,7 @@ class DarkroomStore: ObservableObject {
     func deleteNegative(id: Int) async {
         do { try await DarkroomAPIClient.delete(serverURL: serverURL, apiKey: apiKey, res: "negative", id: id)
             negatives.removeAll { $0.id == id }
-        } catch { present(error) }
+        } catch { errorMessage = error.localizedDescription }
     }
 
     // MARK: - Photo CRUD
@@ -254,11 +193,51 @@ class DarkroomStore: ObservableObject {
     func deletePhoto(id: Int) async {
         do { try await DarkroomAPIClient.delete(serverURL: serverURL, apiKey: apiKey, res: "photo", id: id)
             photos.removeAll { $0.id == id }
-        } catch { present(error) }
+        } catch { errorMessage = error.localizedDescription }
     }
     func uploadPhotoImage(photoId: Int, imageData: Data, mimeType: String) async throws {
-        _ = try await DarkroomAPIClient.uploadImage(serverURL: serverURL, apiKey: apiKey, photoId: photoId, imageData: imageData, mimeType: mimeType)
+        let result = try await DarkroomAPIClient.uploadImage(
+            serverURL: serverURL, apiKey: apiKey,
+            photoId: photoId, imageData: imageData, mimeType: mimeType
+        )
+        // Update local state immediately so the grid refreshes without a full reload
+        if let idx = photos.firstIndex(where: { $0.id == photoId }) {
+            photos[idx].imagePath = result.imagePath
+            photos[idx].thumbPath = result.thumbPath
+        }
         await loadPhotos()
+    }
+
+    func mediaURL(for path: String?) -> URL? {
+        DarkroomAPIClient.mediaURL(serverURL: serverURL, path: path)
+    }
+
+    func addLookupType(resource: String, name: String) async throws {
+        _ = try await DarkroomAPIClient.create(
+            serverURL: serverURL,
+            apiKey: apiKey,
+            res: resource,
+            body: DRLookupRequest(name: name)
+        )
+        await loadTypes()
+    }
+
+    func updateLookupType(resource: String, id: Int, name: String) async throws {
+        try await DarkroomAPIClient.update(
+            serverURL: serverURL,
+            apiKey: apiKey,
+            res: resource,
+            id: id,
+            body: DRLookupRequest(name: name)
+        )
+        await loadTypes()
+    }
+
+    func deleteLookupType(resource: String, id: Int) async {
+        do {
+            try await DarkroomAPIClient.delete(serverURL: serverURL, apiKey: apiKey, res: resource, id: id)
+            await loadTypes()
+        } catch { errorMessage = error.localizedDescription }
     }
 
     // MARK: - Private

@@ -131,13 +131,13 @@ struct ContentView: View {
                         .onTapGesture { editItem = item }
                         .swipeActions(edge: .leading, allowsFullSwipe: true) {
                             Button {
-                                Task { try? await store.toggleDone(item) }
+                                editItem = item
                             } label: {
-                                Label("Done", systemImage: "checkmark.circle.fill")
+                                Label("Edit", systemImage: "pencil")
                             }
-                            .tint(.green)
+                            .tint(.blue)
                         }
-                        .swipeActions(edge: .trailing) {
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
                                 Task { try? await store.delete(id: item.id) }
                             } label: {
@@ -156,13 +156,13 @@ struct ContentView: View {
                                     .onTapGesture { editItem = item }
                                     .swipeActions(edge: .leading, allowsFullSwipe: true) {
                                         Button {
-                                            Task { try? await store.toggleDone(item) }
+                                            editItem = item
                                         } label: {
-                                            Label("Done", systemImage: "checkmark.circle.fill")
+                                            Label("Edit", systemImage: "pencil")
                                         }
-                                        .tint(.green)
+                                        .tint(.blue)
                                     }
-                                    .swipeActions(edge: .trailing) {
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                         Button(role: .destructive) {
                                             Task { try? await store.delete(id: item.id) }
                                         } label: {
@@ -195,11 +195,18 @@ struct ContentView: View {
                                     .opacity(0.45)
                                     .swipeActions(edge: .leading, allowsFullSwipe: true) {
                                         Button {
-                                            Task { try? await store.toggleDone(item) }
+                                            editItem = item
                                         } label: {
-                                            Label("Undo", systemImage: "arrow.uturn.left.circle")
+                                            Label("Edit", systemImage: "pencil")
                                         }
-                                        .tint(.orange)
+                                        .tint(.blue)
+                                    }
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                        Button(role: .destructive) {
+                                            Task { try? await store.delete(id: item.id) }
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
                                     }
                             }
                         }

@@ -1,8 +1,7 @@
 import Foundation
+import UIKit
 
 enum DarkroomAPIClient {
-    private static let requestTimeout: TimeInterval = 60
-    private static let retryableAttempts = 2
 
     static func makeDecoder() -> JSONDecoder {
         let d = JSONDecoder(); d.keyDecodingStrategy = .convertFromSnakeCase; return d
@@ -51,7 +50,9 @@ enum DarkroomAPIClient {
 
     // MARK: - Image upload
 
-    static func uploadImage(serverURL: String, apiKey: String, photoId: Int, imageData: Data, mimeType: String) async throws -> String {
+    struct ImageUploadResult: Decodable { var imagePath: String; var thumbPath: String? }
+
+    static func uploadImage(serverURL: String, apiKey: String, photoId: Int, imageData: Data, mimeType: String) async throws -> ImageUploadResult {
         let trimmed = serverURL.trimmingCharacters(in: CharacterSet(charactersIn: "/ "))
         guard var comps = URLComponents(string: trimmed + "/darkroom-device-api.php") else { throw APIError.badURL }
         comps.queryItems = [
@@ -61,29 +62,50 @@ enum DarkroomAPIClient {
         ]
         guard let url = comps.url else { throw APIError.badURL }
 
+        // Always send as JPEG — convert if needed
+        let jpegData: Data
+        if mimeType == "image/jpeg" {
+            jpegData = imageData
+        } else if let uiImg = UIImage(data: imageData), let compressed = uiImg.jpegData(compressionQuality: 0.88) {
+            jpegData = compressed
+        } else {
+            jpegData = imageData
+        }
+
         let boundary = "Boundary-\(UUID().uuidString)"
         var body = Data()
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"image\"; filename=\"photo.jpg\"\r\n".data(using: .utf8)!)
-        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
-        body.append(imageData)
+        body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+        body.append(jpegData)
         body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
 
-        var req = URLRequest(url: url, timeoutInterval: requestTimeout)
+        var req = URLRequest(url: url, timeoutInterval: 90)
         req.httpMethod = "POST"
         req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         req.httpBody = body
 
-        let (data, _) = try await data(for: req)
-
-        struct ImageResult: Decodable { var imagePath: String }
-        let env = try makeDecoder().decode(Envelope<ImageResult>.self, from: data)
+        let (data, _) = try await URLSession.shared.data(for: req)
+        let env = try makeDecoder().decode(Envelope<ImageUploadResult>.self, from: data)
         guard env.ok, let result = env.data else { throw APIError.httpError(0, env.error ?? "Upload failed") }
-        return result.imagePath
+        return result
     }
 
     // MARK: - Internals
+
+    static func mediaURL(serverURL: String, path: String?) -> URL? {
+        guard let rawPath = path?.trimmingCharacters(in: .whitespacesAndNewlines), !rawPath.isEmpty else {
+            return nil
+        }
+        if let absoluteURL = URL(string: rawPath), absoluteURL.scheme != nil {
+            return absoluteURL
+        }
+
+        let trimmedBase = serverURL.trimmingCharacters(in: CharacterSet(charactersIn: "/ "))
+        let normalizedPath = rawPath.hasPrefix("/") ? String(rawPath.dropFirst()) : rawPath
+        return URL(string: trimmedBase + "/" + normalizedPath)
+    }
 
     static func buildURL(_ base: String, res: String, id: Int?, apiKey: String) throws -> URL {
         let trimmed = base.trimmingCharacters(in: CharacterSet(charactersIn: "/ "))
@@ -96,55 +118,24 @@ enum DarkroomAPIClient {
     }
 
     static func perform(url: URL, method: String, body: Data?, apiKey: String) async throws -> Data {
-        var req = URLRequest(url: url, timeoutInterval: requestTimeout)
+        var req = URLRequest(url: url, timeoutInterval: 30)
         req.httpMethod = method
         req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Accept")
         if let body { req.httpBody = body; req.setValue("application/json", forHTTPHeaderField: "Content-Type") }
-        let (data, resp) = try await data(for: req)
+        let (data, resp): (Data, URLResponse)
+        do {
+            (data, resp) = try await URLSession.shared.data(for: req)
+        } catch let e as URLError {
+            switch e.code {
+            case .notConnectedToInternet, .networkConnectionLost: throw APIError.networkError("No internet")
+            case .timedOut: throw APIError.networkError("Request timed out")
+            case .cannotFindHost, .cannotConnectToHost: throw APIError.networkError("Cannot reach server")
+            default: throw APIError.networkError(e.localizedDescription)
+            }
+        }
         guard let http = resp as? HTTPURLResponse else { throw APIError.networkError("No HTTP response") }
         if http.statusCode == 401 { throw APIError.unauthorized }
         return data
-    }
-
-    private static func data(for request: URLRequest) async throws -> (Data, URLResponse) {
-        var lastError: URLError?
-
-        for attempt in 1...retryableAttempts {
-            do {
-                return try await URLSession.shared.data(for: request)
-            } catch is CancellationError {
-                throw CancellationError()
-            } catch let error as URLError {
-                if error.code == .cancelled { throw CancellationError() }
-                lastError = error
-
-                if error.code == .timedOut && attempt < retryableAttempts {
-                    try? await Task.sleep(for: .seconds(Double(attempt)))
-                    continue
-                }
-                throw map(error)
-            } catch {
-                throw APIError.networkError(error.localizedDescription)
-            }
-        }
-
-        if let lastError {
-            throw map(lastError)
-        }
-        throw APIError.networkError("Request failed")
-    }
-
-    private static func map(_ error: URLError) -> APIError {
-        switch error.code {
-        case .notConnectedToInternet, .networkConnectionLost:
-            return .networkError("No internet")
-        case .timedOut:
-            return .networkError("Request timed out")
-        case .cannotFindHost, .cannotConnectToHost:
-            return .networkError("Cannot reach server")
-        default:
-            return .networkError(error.localizedDescription)
-        }
     }
 }

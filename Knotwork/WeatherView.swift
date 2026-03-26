@@ -164,6 +164,11 @@ struct WeatherView: View {
                 label: "Prev 24h",
                 value: obs.precip24hMm.map { String(format: "%.1f mm", $0) } ?? "0.0 mm"
             )
+            weatherDetail(
+                icon: "cloud.rain",
+                label: "Past Week",
+                value: obs.precip7dMm.map { String(format: "%.1f mm", $0) } ?? "0.0 mm"
+            )
             if let uv = obs.uvIndex {
                 weatherDetail(icon: "sun.max.fill", label: "UV Index", value: String(format: "%.1f", uv))
             }

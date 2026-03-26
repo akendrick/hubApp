@@ -44,10 +44,6 @@ struct WeatherSplashView: View {
                     .font(.system(size: 24, weight: .medium, design: .rounded))
                     .foregroundStyle(.white)
 
-                if let precipSummary {
-                    precipSummary
-                }
-                
                 Spacer()
                 
                 // Tap to continue hint
@@ -76,31 +72,6 @@ struct WeatherSplashView: View {
     
     // MARK: - 24-Hour Solar Dial
 
-    private var precipSummary: AnyView? {
-        guard let obs = weather?.obs else { return nil }
-
-        let nowText = obs.precipRateMmh.map { String(format: "Now %.1f mm/h", $0) }
-        let dayText = obs.precip24hMm.map { String(format: "24h %.1f mm", $0) }
-        let weekText = obs.precip7dMm.map { String(format: "7d %.1f mm", $0) }
-        let parts = [nowText, dayText, weekText].compactMap { $0 }
-
-        guard !parts.isEmpty else { return nil }
-
-        return AnyView(
-            HStack(spacing: 10) {
-                Image(systemName: "cloud.rain.fill")
-                    .font(.caption.weight(.semibold))
-                Text(parts.joined(separator: "  ·  "))
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-            }
-            .foregroundStyle(.white.opacity(0.78))
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(Color.white.opacity(0.08))
-            .clipShape(Capsule())
-        )
-    }
-    
     private var solarDial: some View {
         GeometryReader { geometry in
             let size = min(geometry.size.width, geometry.size.height)
