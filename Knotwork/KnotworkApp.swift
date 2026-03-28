@@ -9,7 +9,6 @@ struct KnotworkApp: App {
     }
 }
 
-/// Shows onboarding until both serverURL and apiKey are set in the store.
 struct RootView: View {
     @StateObject private var store = TodoStore()
     @State private var showWeatherSplash = true
@@ -21,7 +20,6 @@ struct RootView: View {
             } else {
                 OnboardingView(store: store)
             }
-
             if showWeatherSplash && store.isConfigured {
                 WeatherSplashView(store: store, isPresented: $showWeatherSplash)
                     .transition(.opacity)
@@ -31,7 +29,6 @@ struct RootView: View {
     }
 }
 
-/// Main tab view — Tasks, Weather, Darkroom
 struct MainTabView: View {
     @ObservedObject var store: TodoStore
     @StateObject private var darkroomStore: DarkroomStore
@@ -45,20 +42,17 @@ struct MainTabView: View {
 
     var body: some View {
         TabView {
+            DashboardView(store: store, darkroomStore: darkroomStore)
+                .tabItem { Label("Dashboard", systemImage: "square.grid.2x2.fill") }
+
             ContentView(store: store)
-                .tabItem {
-                    Label("Tasks", systemImage: "checklist")
-                }
+                .tabItem { Label("Tasks",    systemImage: "checklist") }
 
             WeatherView(store: store)
-                .tabItem {
-                    Label("Weather", systemImage: "cloud.sun.fill")
-                }
+                .tabItem { Label("Weather",  systemImage: "cloud.sun.fill") }
 
             DarkroomView(store: darkroomStore)
-                .tabItem {
-                    Label("Darkroom", systemImage: "camera.aperture")
-                }
+                .tabItem { Label("Darkroom", systemImage: "camera.aperture") }
         }
     }
 }
