@@ -319,14 +319,14 @@ struct DRPhotoDetail: View {
 
     @ViewBuilder private var finishingSection: some View {
         if !photo.finishing.isEmpty {
-            DRDetailSection(title: "Finishing", accent: .teal) {
+            DRDetailSection(title: "Finishing", accent: .indigo) {
                 ForEach(photo.finishing) { step in
                     VStack(alignment: .leading, spacing: 2) {
                         Text(step.label.isEmpty ? "Step" : step.label).font(.caption.weight(.semibold))
                         HStack(spacing: 12) {
                             if let t = step.stepTime { Text("\(t) s").font(.caption2).foregroundStyle(.secondary) }
                             if let t = step.stepTemp { Text(String(format: "%.1f°C", t)).font(.caption2).foregroundStyle(.secondary) }
-                            if let c = step.chemTypeName { Text(c).font(.caption2).foregroundStyle(.teal) }
+                            if let c = step.chemTypeName { Text(c).font(.caption2).foregroundStyle(.indigo) }
                         }
                         if let n = step.notes { Text(n).font(.caption2).foregroundStyle(.secondary) }
                     }
@@ -683,8 +683,8 @@ struct DRFinishingEditor: View {
                             Text(preset)
                                 .font(.caption2.weight(.medium))
                                 .padding(.horizontal, 8).padding(.vertical, 4)
-                                .background(step.label == preset ? Color.teal : Color.teal.opacity(0.1))
-                                .foregroundStyle(step.label == preset ? Color.white : Color.teal)
+                                .background(step.label == preset ? Color.indigo : Color.indigo.opacity(0.1))
+                                .foregroundStyle(step.label == preset ? Color.white : Color.indigo)
                                 .clipShape(Capsule())
                         }
                         .buttonStyle(.plain)
@@ -849,7 +849,7 @@ struct DRCarbonTissueTab: View {
                         Text(ct.datePoured).font(.caption).foregroundStyle(.secondary) }
                     HStack(spacing: 8) {
                         if let sz = ct.size  { Text(sz).font(.caption).foregroundStyle(.secondary) }
-                        if let c  = ct.chemType { Text(c).font(.caption).foregroundStyle(.teal) }
+                        if let c  = ct.chemType { Text(c).font(.caption).foregroundStyle(.indigo) }
                     }
                 }
                 .contentShape(Rectangle())
@@ -942,7 +942,7 @@ struct DRChemistryTab: View {
     var body: some View {
         List {
             if store.chemistry.isEmpty { DREmptyState(label: "chemistry batches", icon: "flask") }
-            ForEach(displayed) { c in
+            ForEach(displayed, id: \.id) { c in
                 VStack(alignment: .leading, spacing: 5) {
                     // Title (label or fallback)
                     if let lbl = c.label, !lbl.isEmpty {
@@ -956,8 +956,8 @@ struct DRChemistryTab: View {
                             Text(t)
                                 .font(.system(size: 10, weight: .semibold))
                                 .padding(.horizontal, 7).padding(.vertical, 3)
-                                .background(Color.teal.opacity(0.15))
-                                .foregroundStyle(Color.teal)
+                                .background(Color.indigo.opacity(0.15))
+                                .foregroundStyle(Color.indigo)
                                 .clipShape(Capsule())
                         }
                         Text(c.dateCreated).font(.caption).foregroundStyle(.secondary)
@@ -1102,9 +1102,9 @@ struct DRSupportPaperForm: View {
                     }
                     if let cid = treatmentChemId, let chem = store.chemistry.first(where: { $0.id == cid }) {
                         HStack(spacing: 6) {
-                            if let t = chem.typeName { DRInfoChip(label: "Type", value: t, color: .teal) }
-                            if let p = chem.percentSolution { DRInfoChip(label: "%", value: String(format: "%.1f", p), color: .teal) }
-                            DRInfoChip(label: "Made", value: drDateToYYMM(chem.dateCreated), color: .teal)
+                            if let t = chem.typeName { DRInfoChip(label: "Type", value: t, color: .indigo) }
+                            if let p = chem.percentSolution { DRInfoChip(label: "%", value: String(format: "%.1f", p), color: .indigo) }
+                            DRInfoChip(label: "Made", value: drDateToYYMM(chem.dateCreated), color: .indigo)
                         }
                         .padding(.top, 2)
                     }

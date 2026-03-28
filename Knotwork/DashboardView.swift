@@ -210,19 +210,19 @@ struct DashboardView: View {
     private var todoSummarySection: some View {
         if !nonRecurringPending.isEmpty {
             VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 0) {
+                HStack(alignment: .top, spacing: 0) {
                     // Left — urgent (priority 1–2)
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: 5) {
                         Text("URGENT")
-                            .font(.system(size: 9, design: .monospaced).weight(.bold))
+                            .font(.system(size: 14, design: .monospaced).weight(.bold))
                             .tracking(1.5)
-                            .foregroundStyle(Color.red.opacity(0.7))
+                            .foregroundStyle(Color.red.opacity(0.8))
                             .padding(.bottom, 2)
                         if urgentItems.isEmpty {
                             Text("—").font(.system(size: 10)).foregroundStyle(.tertiary)
                         } else {
                             ForEach(urgentItems) { item in
-                                TodoTagChip(item: item) { tappedItem = item }
+                                TodoTagChip(item: item, textSize: 15) { tappedItem = item }
                             }
                         }
                     }
@@ -242,7 +242,7 @@ struct DashboardView: View {
                             Text("—").font(.system(size: 10)).foregroundStyle(.tertiary)
                         } else {
                             ForEach(otherItems) { item in
-                                TodoTagChip(item: item) { tappedItem = item }
+                                TodoTagChip(item: item, textSize: 11) { tappedItem = item }
                             }
                         }
                     }
@@ -266,6 +266,7 @@ struct DashboardView: View {
 
 struct TodoTagChip: View {
     let item: TodoItem
+    var textSize: CGFloat = 11
     let onTap: () -> Void
 
     private var chipColor: Color {
@@ -289,7 +290,7 @@ struct TodoTagChip: View {
                         .clipShape(RoundedRectangle(cornerRadius: 2))
                 }
                 Text(item.text)
-                    .font(.system(size: 11))
+                    .font(.system(size: textSize))
                     .foregroundStyle(Color(uiColor: .label))
                     .lineLimit(1)
             }

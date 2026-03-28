@@ -29,32 +29,22 @@ class DarkroomStore: ObservableObject {
 
     func loadTypes() async {
         do {
-            async let pt: [DRPhotoType] = fetch("photo_types")
-            async let ct: [DRLookup]   = fetch("chemistry_types")
-            async let nt: [DRLookup]   = fetch("negative_types")
-            (photoTypes, chemistryTypes, negativeTypes) = try await (pt, ct, nt)
-            cache(photoTypes,     key: "dr_photoTypes")
-            cache(chemistryTypes, key: "dr_chemistryTypes")
-            cache(negativeTypes,  key: "dr_negativeTypes")
+            photoTypes     = try await fetch("photo_types");    cache(photoTypes,     key: "dr_photoTypes")
+            chemistryTypes = try await fetch("chemistry_types"); cache(chemistryTypes, key: "dr_chemistryTypes")
+            negativeTypes  = try await fetch("negative_types");  cache(negativeTypes,  key: "dr_negativeTypes")
         } catch { errorMessage = error.localizedDescription }
     }
 
     func loadAllForPhotoForm() async {
         isLoading = true; defer { isLoading = false }
+        // Sequential — shared hosting can't handle 6 parallel connections
         do {
-            async let pt:  [DRPhotoType]    = fetch("photo_types")
-            async let sp:  [DRSupportPaper] = fetch("support_paper")
-            async let ct:  [DRCarbonTissue] = fetch("carbon_tissue")
-            async let neg: [DRNegative]     = fetch("negative")
-            async let c:   [DRChemistry]    = fetch("chemistry")
-            async let p:   [DRPaper]        = fetch("paper")
-            (photoTypes, supportPapers, carbonTissues, negatives, chemistry, papers) = try await (pt, sp, ct, neg, c, p)
-            cache(photoTypes,    key: "dr_photoTypes")
-            cache(supportPapers, key: "dr_supportPapers")
-            cache(carbonTissues, key: "dr_carbonTissues")
-            cache(negatives,     key: "dr_negatives")
-            cache(chemistry,     key: "dr_chemistry")
-            cache(papers,        key: "dr_papers")
+            photoTypes    = try await fetch("photo_types");    cache(photoTypes,    key: "dr_photoTypes")
+            chemistry     = try await fetch("chemistry");      cache(chemistry,     key: "dr_chemistry")
+            papers        = try await fetch("paper");          cache(papers,        key: "dr_papers")
+            supportPapers = try await fetch("support_paper"); cache(supportPapers, key: "dr_supportPapers")
+            carbonTissues = try await fetch("carbon_tissue"); cache(carbonTissues, key: "dr_carbonTissues")
+            negatives     = try await fetch("negative");       cache(negatives,     key: "dr_negatives")
         } catch { errorMessage = error.localizedDescription }
     }
 
@@ -259,16 +249,10 @@ class DarkroomStore: ObservableObject {
     // MARK: - Dashboard (cache-first for dashboard tab)
 
     func loadRecentForDashboard() async {
-        // Cache already applied in init — just refresh silently
         guard !serverURL.isEmpty && !apiKey.isEmpty else { return }
         do {
-            async let p: [DRPhoto]     = fetch("photo")
-            async let c: [DRChemistry] = fetch("chemistry")
-            let (newPhotos, newChem) = try await (p, c)
-            photos    = newPhotos
-            chemistry = newChem
-            cache(photos,    key: "dr_photos")
-            cache(chemistry, key: "dr_chemistry")
+            photos    = try await fetch("photo");    cache(photos,    key: "dr_photos")
+            chemistry = try await fetch("chemistry"); cache(chemistry, key: "dr_chemistry")
         } catch { /* silent — cached data still shown */ }
     }
 
