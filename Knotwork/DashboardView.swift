@@ -9,10 +9,13 @@ struct DashboardView: View {
     @State private var editItem: TodoItem?
     @State private var calEvents: [ICalEvent] = []
 
+    @State private var tappedItem: TodoItem?
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 0) {
+                    todoSummarySection
                     if !overdueItems.isEmpty { overdueSection }
                     calendarSection
                     recentDarkroomSection
@@ -33,8 +36,10 @@ struct DashboardView: View {
             }
             .refreshable { await doRefresh() }
             .sheet(item: $editItem) { EditItemView(store: store, item: $0) }
+            .sheet(item: $tappedItem) { item in
+                TodoDetailPopup(item: item) { editItem = item; tappedItem = nil }
+            }
             .task {
-                // Load iCal cache immediately, then refresh everything
                 calEvents = ICalCache.load()
                 await doRefresh()
             }
@@ -192,8 +197,156 @@ struct DashboardView: View {
             .sorted { ($0.due ?? "") < ($1.due ?? "") }
     }
 
+    // MARK: - Todo Summary (two-column tag grid)
+
+    private var nonRecurringPending: [TodoItem] {
+        store.items.filter { !$0.done && $0.recurWeekday == nil && $0.recurDay == nil }
+            .sorted { $0.priority < $1.priority }
+    }
+    private var urgentItems: [TodoItem] { nonRecurringPending.filter { $0.priority <= 2 } }
+    private var otherItems:  [TodoItem] { nonRecurringPending.filter { $0.priority > 2 } }
+
+    @ViewBuilder
+    private var todoSummarySection: some View {
+        if !nonRecurringPending.isEmpty {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 0) {
+                    // Left — urgent (priority 1–2)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("URGENT")
+                            .font(.system(size: 9, design: .monospaced).weight(.bold))
+                            .tracking(1.5)
+                            .foregroundStyle(Color.red.opacity(0.7))
+                            .padding(.bottom, 2)
+                        if urgentItems.isEmpty {
+                            Text("—").font(.system(size: 10)).foregroundStyle(.tertiary)
+                        } else {
+                            ForEach(urgentItems) { item in
+                                TodoTagChip(item: item) { tappedItem = item }
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .padding(.horizontal, 12).padding(.vertical, 10)
+
+                    Divider().frame(width: 0.5)
+
+                    // Right — others (priority 3–5)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("OTHER")
+                            .font(.system(size: 9, design: .monospaced).weight(.bold))
+                            .tracking(1.5)
+                            .foregroundStyle(Color(uiColor: .secondaryLabel))
+                            .padding(.bottom, 2)
+                        if otherItems.isEmpty {
+                            Text("—").font(.system(size: 10)).foregroundStyle(.tertiary)
+                        } else {
+                            ForEach(otherItems) { item in
+                                TodoTagChip(item: item) { tappedItem = item }
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                    .padding(.horizontal, 12).padding(.vertical, 10)
+                }
+            }
+            .background(Color(uiColor: .secondarySystemBackground))
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(Color(uiColor: .separator).opacity(0.5)).frame(height: 0.5)
+            }
+        }
+    }
+
     private func isoDate(_ date: Date) -> String {
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f.string(from: date)
+    }
+}
+
+// MARK: - Todo Tag Chip
+
+struct TodoTagChip: View {
+    let item: TodoItem
+    let onTap: () -> Void
+
+    private var chipColor: Color {
+        switch item.priority {
+        case 1: return Color(red: 0.75, green: 0.10, blue: 0.10)
+        case 2: return Color(red: 0.70, green: 0.38, blue: 0.00)
+        case 4: return Color(red: 0.10, green: 0.30, blue: 0.60)
+        default: return Color(uiColor: .secondaryLabel)
+        }
+    }
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 4) {
+                if !item.tags.isEmpty {
+                    Text(item.tags[0])
+                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                        .padding(.horizontal, 4).padding(.vertical, 1)
+                        .background(chipColor)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 2))
+                }
+                Text(item.text)
+                    .font(.system(size: 11))
+                    .foregroundStyle(Color(uiColor: .label))
+                    .lineLimit(1)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Todo Detail Popup
+
+struct TodoDetailPopup: View {
+    let item: TodoItem
+    let onEdit: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Text(item.text).font(.headline)
+                }
+                Section {
+                    if let due = item.dueDateFormatted {
+                        LabeledContent("Due", value: due)
+                    }
+                    LabeledContent("Priority", value: priorityLabel)
+                    if !item.tags.isEmpty {
+                        LabeledContent("Tags", value: item.tags.joined(separator: ", "))
+                    }
+                }
+                if let notes = item.notes, !notes.isEmpty {
+                    Section("Notes") {
+                        Text(notes).font(.body).foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle("Task")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading)  { Button("Done") { dismiss() } }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { dismiss(); onEdit() } label: { Label("Edit", systemImage: "pencil") }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+
+    private var priorityLabel: String {
+        switch item.priority {
+        case 1: return "🔴 Critical"
+        case 2: return "🟠 High"
+        case 3: return "🟡 Normal"
+        case 4: return "🔵 Low"
+        default: return "⚪ Minimal"
+        }
     }
 }
 

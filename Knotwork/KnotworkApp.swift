@@ -45,14 +45,16 @@ struct MainTabView: View {
             DashboardView(store: store, darkroomStore: darkroomStore)
                 .tabItem { Label("Dashboard", systemImage: "square.grid.2x2.fill") }
 
-            ContentView(store: store)
-                .tabItem { Label("Tasks",    systemImage: "checklist") }
+            DarkroomView(store: darkroomStore)
+                .tabItem { Label("Darkroom", systemImage: "camera.aperture") }
 
             WeatherView(store: store)
                 .tabItem { Label("Weather",  systemImage: "cloud.sun.fill") }
 
-            DarkroomView(store: darkroomStore)
-                .tabItem { Label("Darkroom", systemImage: "camera.aperture") }
+            ContentView(store: store)
+                .tabItem { Label("Tasks",    systemImage: "checklist") }
+
+
         }
     }
 }

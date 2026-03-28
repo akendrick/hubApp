@@ -78,7 +78,12 @@ struct DRPhotosTab: View {
     @State private var showForm = false
     @State private var editTarget: DRPhoto?
     @State private var detailPhoto: DRPhoto?
+    @State private var showAll = false
     let columns = [GridItem(.adaptive(minimum: 160), spacing: 12)]
+
+    private var displayedPhotos: [DRPhoto] {
+        showAll ? store.photos : Array(store.photos.prefix(6))
+    }
 
     var body: some View {
         Group {
@@ -87,14 +92,10 @@ struct DRPhotosTab: View {
             } else {
                 ScrollView {
                     LazyVGrid(columns: columns, spacing: 12) {
-                        ForEach(store.photos) { photo in
-                            DRPhotoCard(photo: photo)
-                                // Tap → detail
+                        ForEach(displayedPhotos) { photo in
+                            DRPhotoCard(photo: photo, serverURL: store.serverURL)
                                 .onTapGesture { detailPhoto = photo }
-                                // Long press → duplicate
-                                .onLongPressGesture {
-                                    Task { await duplicatePhoto(photo) }
-                                }
+                                .onLongPressGesture { Task { await duplicatePhoto(photo) } }
                                 .contextMenu {
                                     Button { detailPhoto = photo } label: { Label("View", systemImage: "eye") }
                                     Button { editTarget = photo; showForm = true } label: { Label("Edit", systemImage: "pencil") }
@@ -106,6 +107,13 @@ struct DRPhotosTab: View {
                         }
                     }
                     .padding()
+                    if store.photos.count > 6 {
+                        Button(showAll ? "Show Less" : "More (\(store.photos.count - 6) more)") {
+                            withAnimation { showAll.toggle() }
+                        }
+                        .font(.caption.weight(.semibold))
+                        .padding(.bottom, 16)
+                    }
                 }
                 .refreshable { await store.loadPhotos() }
             }
@@ -145,10 +153,18 @@ struct DRPhotosTab: View {
 
 struct DRPhotoCard: View {
     let photo: DRPhoto
+    let serverURL: String
+
+    private func absoluteURL(_ path: String?) -> URL? {
+        guard let p = path, !p.isEmpty else { return nil }
+        if p.hasPrefix("http") { return URL(string: p) }
+        let base = serverURL.trimmingCharacters(in: CharacterSet(charactersIn: "/ "))
+        return URL(string: "\(base)/\(p)")
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            // Use square thumbnail if available, fall back to full image
-            let thumbURL = (photo.thumbPath ?? photo.imagePath).flatMap { URL(string: $0) }
+            let thumbURL = absoluteURL(photo.thumbPath ?? photo.imagePath)
             if let url = thumbURL {
                 AsyncImage(url: url) { image in
                     image.resizable().scaledToFill()
@@ -215,8 +231,15 @@ struct DRPhotoDetail: View {
         .onAppear { }
     }
 
+    private func absoluteURL(_ path: String?) -> URL? {
+        guard let p = path, !p.isEmpty else { return nil }
+        if p.hasPrefix("http") { return URL(string: p) }
+        let base = store.serverURL.trimmingCharacters(in: CharacterSet(charactersIn: "/ "))
+        return URL(string: "\(base)/\(p)")
+    }
+
     @ViewBuilder private var imageSection: some View {
-        if let path = photo.imagePath, let imgURL = URL(string: path) {
+        if let imgURL = absoluteURL(photo.imagePath) {
             AsyncImage(url: imgURL) { phase in
                 if let img = phase.image { img.resizable().scaledToFit() }
                 else { ProgressView().frame(maxHeight: 300) }
@@ -815,10 +838,12 @@ struct DRSupportPaperTab: View {
 struct DRCarbonTissueTab: View {
     @ObservedObject var store: DarkroomStore
     @State private var showForm = false; @State private var editTarget: DRCarbonTissue?
+    @State private var showAll = false
+    private var displayed: [DRCarbonTissue] { showAll ? store.carbonTissues : Array(store.carbonTissues.prefix(8)) }
     var body: some View {
         List {
             if store.carbonTissues.isEmpty { DREmptyState(label: "carbon tissue batches", icon: "square.stack") }
-            ForEach(store.carbonTissues) { ct in
+            ForEach(displayed) { ct in
                 VStack(alignment: .leading, spacing: 3) {
                     HStack { Text(ct.menuLabel).font(.headline); Spacer()
                         Text(ct.datePoured).font(.caption).foregroundStyle(.secondary) }
@@ -837,6 +862,12 @@ struct DRCarbonTissueTab: View {
                     Button(role: .destructive) { Task { await store.deleteCarbonTissue(id: ct.id) } }
                     label: { Label("Delete", systemImage: "trash") }
                 }
+            }
+            if store.carbonTissues.count > 8 {
+                Button(showAll ? "Show Less" : "More (\(store.carbonTissues.count - 8) more)") {
+                    withAnimation { showAll.toggle() }
+                }
+                .font(.caption.weight(.semibold))
             }
         }
         .listStyle(.insetGrouped)
@@ -905,22 +936,42 @@ struct DRNegativesTab: View {
 struct DRChemistryTab: View {
     @ObservedObject var store: DarkroomStore
     @State private var showForm = false; @State private var editTarget: DRChemistry?
+    @State private var showAll = false
+    private var displayed: [DRChemistry] { showAll ? store.chemistry : Array(store.chemistry.prefix(10)) }
 
     var body: some View {
         List {
             if store.chemistry.isEmpty { DREmptyState(label: "chemistry batches", icon: "flask") }
-            ForEach(store.chemistry) { c in
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(c.menuLabel).font(.headline)
-                    HStack(spacing: 8) {
+            ForEach(displayed) { c in
+                VStack(alignment: .leading, spacing: 5) {
+                    // Title (label or fallback)
+                    if let lbl = c.label, !lbl.isEmpty {
+                        Text(lbl).font(.headline)
+                    } else {
+                        Text(c.menuLabel).font(.headline)
+                    }
+                    // Tag / type chip + other info on one line
+                    HStack(spacing: 6) {
+                        if let t = c.typeName {
+                            Text(t)
+                                .font(.system(size: 10, weight: .semibold))
+                                .padding(.horizontal, 7).padding(.vertical, 3)
+                                .background(Color.teal.opacity(0.15))
+                                .foregroundStyle(Color.teal)
+                                .clipShape(Capsule())
+                        }
                         Text(c.dateCreated).font(.caption).foregroundStyle(.secondary)
-                        if let p = c.percentSolution { Text(String(format: "%.1f%%", p)).font(.caption).foregroundStyle(.secondary) }
+                        if let p = c.percentSolution {
+                            Text(String(format: "%.1f%%", p)).font(.caption).foregroundStyle(.secondary)
+                        }
                         if let from = c.createdFromIds, !from.isEmpty {
                             let parent = store.chemistry.first { String($0.id) == from }
                             Text("← \(parent?.menuLabel ?? "#\(from)")").font(.caption2).foregroundStyle(.tertiary).lineLimit(1)
                         }
                     }
-                    if let n = c.notes { Text(n).font(.caption2).foregroundStyle(.tertiary).lineLimit(1) }
+                    if let n = c.notes, !n.isEmpty {
+                        Text(n).font(.caption2).foregroundStyle(.tertiary).lineLimit(1)
+                    }
                 }
                 .contentShape(Rectangle())
                 .onLongPressGesture { Task { await duplicateChem(c) } }
@@ -932,6 +983,12 @@ struct DRChemistryTab: View {
                     Button(role: .destructive) { Task { await store.deleteChemistry(id: c.id) } }
                     label: { Label("Delete", systemImage: "trash") }
                 }
+            }
+            if store.chemistry.count > 10 {
+                Button(showAll ? "Show Less" : "More (\(store.chemistry.count - 10) more)") {
+                    withAnimation { showAll.toggle() }
+                }
+                .font(.caption.weight(.semibold))
             }
         }
         .listStyle(.insetGrouped)
@@ -1170,83 +1227,111 @@ struct DRNegativeForm: View {
     }
 }
 
-// MARK: - Options Tab
+// MARK: - Options Tab (segmented: Process Types / Chemistry Types / Negative Types)
 
 struct DROptionsTab: View {
     @ObservedObject var store: DarkroomStore
-    @State private var newChemType = ""; @State private var newNegType = ""
-    @State private var showEditType: DRLookup? = nil; @State private var editRes = ""
+    @State private var segment = 0  // 0=Process, 1=Chemistry Types, 2=Negative Types
 
     var body: some View {
+        VStack(spacing: 0) {
+            Picker("", selection: $segment) {
+                Text("Process").tag(0)
+                Text("Chem Types").tag(1)
+                Text("Neg Types").tag(2)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 16).padding(.vertical, 8)
+            .background(Color(uiColor: .systemGroupedBackground))
+
+            switch segment {
+            case 0:  DRProcessTypesOptions(store: store)
+            case 1:  DRLookupTypeOptions(store: store, resource: "chemistry_types",
+                                          title: "Chemistry Types",
+                                          items: store.chemistryTypes)
+            default: DRLookupTypeOptions(store: store, resource: "negative_types",
+                                          title: "Negative Types",
+                                          items: store.negativeTypes)
+            }
+        }
+        .task { await store.loadTypes() }
+    }
+}
+
+// Process Types sub-view
+private struct DRProcessTypesOptions: View {
+    @ObservedObject var store: DarkroomStore
+    var body: some View {
         List {
-            Section("Process Types") {
-                ForEach(store.photoTypes) { pt in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(pt.name).font(.subheadline)
-                        HStack(spacing: 8) {
-                            Text(pt.isCarbonDev ? "Carbon dev" : "Simple dev").font(.caption2).foregroundStyle(.secondary)
-                            if pt.showLayers { Text("Layers").font(.caption2).foregroundStyle(.blue) }
+            if store.photoTypes.isEmpty { DREmptyState(label: "process types", icon: "gearshape") }
+            ForEach(store.photoTypes) { pt in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(pt.name).font(.subheadline)
+                    HStack(spacing: 8) {
+                        Text(pt.isCarbonDev ? "Carbon dev" : "Simple dev")
+                            .font(.caption2).foregroundStyle(.secondary)
+                        if pt.showLayers {
+                            Text("Layers").font(.caption2).foregroundStyle(.blue)
                         }
                     }
-                    .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) { Task { await store.deletePhotoType(id: pt.id) } }
-                        label: { Label("Delete", systemImage: "trash") }
-                    }
                 }
-            }
-            Section("Chemistry Types") {
-                ForEach(store.chemistryTypes) { t in
-                    Text(t.name)
-                        .swipeActions(edge: .leading) {
-                            Button { showEditType = t; editRes = "chemistry_types" } label: { Label("Edit", systemImage: "pencil") }
-                                .tint(.blue)
-                        }
-                        .swipeActions(edge: .trailing) {
-                            Button(role: .destructive) { Task { await store.deleteLookupType(resource: "chemistry_types", id: t.id) } }
-                            label: { Label("Delete", systemImage: "trash") }
-                        }
+                .swipeActions(edge: .leading) {
+                    // Process types have no edit yet (complex form) — placeholder
                 }
-                HStack {
-                    TextField("New type…", text: $newChemType).submitLabel(.done)
-                        .onSubmit { Task { await addType("chemistry_types") } }
-                    Button("Add") { Task { await addType("chemistry_types") } }
-                        .disabled(newChemType.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            }
-            Section("Negative Types") {
-                ForEach(store.negativeTypes) { t in
-                    Text(t.name)
-                        .swipeActions(edge: .leading) {
-                            Button { showEditType = t; editRes = "negative_types" } label: { Label("Edit", systemImage: "pencil") }
-                                .tint(.blue)
-                        }
-                        .swipeActions(edge: .trailing) {
-                            Button(role: .destructive) { Task { await store.deleteLookupType(resource: "negative_types", id: t.id) } }
-                            label: { Label("Delete", systemImage: "trash") }
-                        }
-                }
-                HStack {
-                    TextField("New type…", text: $newNegType).submitLabel(.done)
-                        .onSubmit { Task { await addType("negative_types") } }
-                    Button("Add") { Task { await addType("negative_types") } }
-                        .disabled(newNegType.trimmingCharacters(in: .whitespaces).isEmpty)
+                .swipeActions(edge: .trailing) {
+                    Button(role: .destructive) { Task { await store.deletePhotoType(id: pt.id) } }
+                    label: { Label("Delete", systemImage: "trash") }
                 }
             }
         }
         .listStyle(.insetGrouped)
-        .task { await store.loadTypes() }
-        .sheet(item: $showEditType) { t in
-            DREditLookupForm(name: t.name, res: editRes, id: t.id, store: store) { showEditType = nil }
+    }
+}
+
+// Generic lookup type sub-view (Chemistry Types / Negative Types)
+private struct DRLookupTypeOptions: View {
+    @ObservedObject var store: DarkroomStore
+    let resource: String
+    let title: String
+    let items: [DRLookup]
+    @State private var newName = ""
+    @State private var showEdit: DRLookup? = nil
+
+    var body: some View {
+        List {
+            if items.isEmpty { DREmptyState(label: title.lowercased(), icon: "tag") }
+            ForEach(items) { t in
+                Text(t.name)
+                    .swipeActions(edge: .leading) {
+                        Button { showEdit = t } label: { Label("Edit", systemImage: "pencil") }
+                            .tint(.blue)
+                    }
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            Task { await store.deleteLookupType(resource: resource, id: t.id) }
+                        } label: { Label("Delete", systemImage: "trash") }
+                    }
+            }
+            HStack {
+                TextField("New \(title.lowercased().replacingOccurrences(of: " types", with: ""))…",
+                          text: $newName)
+                    .submitLabel(.done)
+                    .onSubmit { Task { await add() } }
+                Button("Add") { Task { await add() } }
+                    .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+        .listStyle(.insetGrouped)
+        .sheet(item: $showEdit) { t in
+            DREditLookupForm(name: t.name, res: resource, id: t.id, store: store) { showEdit = nil }
         }
     }
 
-    private func addType(_ res: String) async {
-        let name = (res == "chemistry_types" ? newChemType : newNegType).trimmingCharacters(in: .whitespaces)
+    private func add() async {
+        let name = newName.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { return }
-        do {
-            try await store.addLookupType(resource: res, name: name)
-            if res == "chemistry_types" { newChemType = "" } else { newNegType = "" }
-        } catch { store.errorMessage = error.localizedDescription }
+        do { try await store.addLookupType(resource: resource, name: name); newName = "" }
+        catch { store.errorMessage = error.localizedDescription }
     }
 }
 
