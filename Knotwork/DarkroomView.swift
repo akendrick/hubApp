@@ -32,7 +32,7 @@ struct DarkroomView: View {
             .navigationTitle("Darkroom")
             .navigationBarTitleDisplayMode(.inline)
         }
-        .task { await store.loadTypes() }
+        .task { await store.bootstrap() }
         .alert("Error", isPresented: Binding(
             get: { store.errorMessage != nil },
             set: { if !$0 { store.errorMessage = nil } }
@@ -127,7 +127,6 @@ struct DRPhotosTab: View {
         .sheet(item: $detailPhoto) { photo in
             DRPhotoDetail(store: store, photo: photo) { p in editTarget = p; detailPhoto = nil; showForm = true }
         }
-        .task { await store.loadAllForPhotoForm(); await store.loadPhotos() }
     }
 
     private func duplicatePhoto(_ photo: DRPhoto) async {
@@ -780,7 +779,7 @@ struct DRLayersTab: View {
             default: DRNegativesTab(store: store)
             }
         }
-        .task { await store.loadAllForPhotoForm(); await store.loadSupportPapers(); await store.loadCarbonTissues(); await store.loadNegatives() }
+
     }
 }
 
@@ -998,7 +997,7 @@ struct DRChemistryTab: View {
         .sheet(isPresented: $showForm, onDismiss: { editTarget = nil; Task { await store.loadChemistry() } }) {
             DRChemistryForm(store: store, target: editTarget) { showForm = false }
         }
-        .task { await store.loadChemistry() }
+        
         .refreshable { await store.loadChemistry() }
     }
 
@@ -1055,8 +1054,6 @@ struct DRChemistryForm: View {
                 createdFromId = t.createdFromIds.flatMap { Int($0) }; notes = t.notes ?? ""
             }
         }
-        .task { if store.chemistryTypes.isEmpty { await store.loadTypes() }
-               if store.chemistry.isEmpty { await store.loadChemistry() } }
     }
     private func save() async {
         saving = true; error = nil
@@ -1254,7 +1251,7 @@ struct DROptionsTab: View {
                                           items: store.negativeTypes)
             }
         }
-        .task { await store.loadTypes() }
+
     }
 }
 

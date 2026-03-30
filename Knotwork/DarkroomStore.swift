@@ -19,10 +19,33 @@ class DarkroomStore: ObservableObject {
     @Published var isLoading    = false
     @Published var errorMessage: String?
 
+    private var isBootstrapping = false
+
     init(serverURL: String, apiKey: String) {
         self.serverURL = serverURL
         self.apiKey    = apiKey
-        restoreCache()   // populate immediately from disk so UI shows data before network
+        restoreCache()
+    }
+
+    // MARK: - Bootstrap (single entry point — called once from root view)
+
+    /// Loads all data sequentially. Guarded against concurrent calls.
+    func bootstrap() async {
+        guard !isBootstrapping else { return }
+        isBootstrapping = true
+        isLoading = true
+        defer { isBootstrapping = false; isLoading = false }
+        do {
+            photoTypes     = try await fetch("photo_types");    cache(photoTypes,     key: "dr_photoTypes")
+            chemistryTypes = try await fetch("chemistry_types"); cache(chemistryTypes, key: "dr_chemistryTypes")
+            negativeTypes  = try await fetch("negative_types");  cache(negativeTypes,  key: "dr_negativeTypes")
+            chemistry      = try await fetch("chemistry");       cache(chemistry,      key: "dr_chemistry")
+            papers         = try await fetch("paper");           cache(papers,         key: "dr_papers")
+            supportPapers  = try await fetch("support_paper");  cache(supportPapers,  key: "dr_supportPapers")
+            carbonTissues  = try await fetch("carbon_tissue");  cache(carbonTissues,  key: "dr_carbonTissues")
+            negatives      = try await fetch("negative");        cache(negatives,      key: "dr_negatives")
+            photos         = try await fetch("photo");           cache(photos,         key: "dr_photos")
+        } catch { errorMessage = error.localizedDescription }
     }
 
     // MARK: - Bootstrap
